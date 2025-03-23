@@ -80,7 +80,9 @@ SYSTEM = platform.node()
 # TEST_DIR = "/pscratch/kmlamar/ProxyAppPredictorTests" + SYSTEM + "/" #"./tests/"
 TEST_DIR = "./tests/"
 # Where ML results are pickled and stored.
-PICKLE_DIR = "/pscratch/kmlamar/pickles/"
+# PICKLE_DIR = "/pscratch/kmlamar/pickles/"
+
+PICKLE_DIR = "./pickles/"
 # Time to wait on SLURM, in seconds, to avoid a busy loop.
 WAIT_TIME = 1
 # The maximum number of active jobs to enqueue.
@@ -101,8 +103,9 @@ DEBUG_APPS = False
 # Used to choose which apps to test.
 # range_params.keys() #["ExaMiniMDbase", "ExaMiniMDsnap", "SWFFT", "sw4lite", "nekbone", "miniAMR", "HACC-IO", "LAMMPS"]
 # NOTE: These are the apps I have in my draft.
-enabled_apps = ["ExaMiniMDsnap",  "HACC-IO", "LAMMPS", "SWFFT", "nekbone"]
+# enabled_apps = ["ExaMiniMDsnap", "HACC-IO", "LAMMPS", "SWFFT", "nekbone"]
 # Whether or not to shortcut out tests that may be redundant or invalid.
+enabled_apps = ["nekbone"]#["ExaMiniMDsnap"] #"HACC-IO", "LAMMPS", "SWFFT", "nekbone"]
 SKIP_TESTS = True
 # A global terminate indicator. Set to True to quit gracefully.
 terminate = False
@@ -1161,7 +1164,7 @@ def run_job(index=0, lazy=False):
                                "index": index, "path": job["test_path"]}
     # On local, run the command.
     else:
-        print("Running app: " + job["app"] + "\t test: " + str(index))
+        # print("Running app: " + job["app"] + "\t test: " + str(index))
         start = time.time()
         output = str(subprocess.run(job["command"],
                                     cwd=job["test_path"],
@@ -1190,6 +1193,7 @@ def finish_active_jobs(lazy=False):
     """
     global features
 
+    print(len(queued_jobs), "number of jobs")
     if not lazy:
         # Ensure everything generated is in the active jobs list.
         while len(queued_jobs) > 0:
@@ -1382,12 +1386,14 @@ def narrow_params():
 def read_df():
     """ Read an existing DataFrame back from a saved CSV.
     """
+    print(TEST_DIR)
     # For each app.
     for app in enabled_apps:
         # Open the existing CSV.
         df[app] = pd.read_csv(TEST_DIR + app + "dataset.csv",
                               sep=",", header=0, index_col=0,
                               engine="c", quotechar="\"")
+        # print(df[app])
     return
 
 
@@ -2080,59 +2086,59 @@ def run_regressor(X, y, preprocessor, model_idx, app="", only_count=False):
         (regression, get_pipeline(preprocessor, RandomForestRegressor()),
          "Random Forest Regressor "+app, X, y))
 
-    regressors.append(
-        (regression, get_pipeline(preprocessor, tree.DecisionTreeRegressor()),
-         "Decision Tree Regressor "+app, X, y))
-
-    regressors.append(
-        (regression, get_pipeline(preprocessor, linear_model.BayesianRidge()),
-         "Bayesian Ridge "+app, X, y))
-
-    regressors.append(
-        (regression, get_pipeline(preprocessor, svm.SVR()),
-         "Support Vector Regression RBF "+app, X, y))
-    for i in range(1, 3+1):
-        regressors.append(
-            (regression, get_pipeline(preprocessor, svm.SVR(kernel="poly", degree=i)),
-             "Support Vector Regression poly "+str(i)+" "+app, X, y))
-    regressors.append(
-        (regression, get_pipeline(preprocessor, svm.SVR(kernel="sigmoid")),
-         "Support Vector Regression sigmoid "+app, X, y))
-
-    regressors.append(
-        (regression, get_pipeline(preprocessor, make_pipeline(StandardScaler(), SGDRegressor(max_iter=1000, tol=1e-3))),
-         "Linear Stochastic Gradient Descent Regressor "+app, X, y))
-
-    for i in range(1, 7+1):
-        regressors.append(
-            (regression, get_pipeline(preprocessor, KNeighborsRegressor(n_neighbors=i)),
-             str(i)+" Nearest Neighbors Regressor "+app, X, y))
-
-    if app != "nekbonebaseline":
-        # NOTE: Anything larger than 2 is cut down to 2.
-        for i in range(1, 2+1):
-            regressors.append(
-                (regression, get_pipeline(preprocessor, PLSRegression(n_components=i)),
-                 str(i)+" PLS Regression "+app, X, y))
-
-    for i in range(1, 2 + 1):
-        layer_size = int((len(columns) + 1) / 2) # (Input size + output size) / 2
-        layers = tuple(layer_size for _ in range(i))
-        regressors.append(
-            (regression, get_pipeline(preprocessor, MLPRegressor(activation="relu", hidden_layer_sizes=layers, random_state=1, max_iter=500)),
-             str(i)+" MLP Regressor relu "+app, X, y))
-
-    # NOTE: Preprocessing is bad for these. Use raw values.
-    if app == "SWFFT":
-        regressors.append(
-            (regression, AnalyticalRegressor(columns), "Analytical Regressor "+app, X, y))
-    regressors.append(
-        (regression, TsafrirRegressor(columns), "Tsafrir Regressor "+app, X, y, True))
-    regressors.append(
-        (regression, ReqtimeRegressor(columns), "Reqtime Regressor "+app, X, y, True))
-    regressors.append(
-        (regression, CompleteRegressor(columns), "Complete Regressor "+app, X, y, True))
-
+    # regressors.append(
+    #     (regression, get_pipeline(preprocessor, tree.DecisionTreeRegressor()),
+    #      "Decision Tree Regressor "+app, X, y))
+    #
+    # regressors.append(
+    #     (regression, get_pipeline(preprocessor, linear_model.BayesianRidge()),
+    #      "Bayesian Ridge "+app, X, y))
+    #
+    # regressors.append(
+    #     (regression, get_pipeline(preprocessor, svm.SVR()),
+    #      "Support Vector Regression RBF "+app, X, y))
+    # for i in range(1, 3+1):
+    #     regressors.append(
+    #         (regression, get_pipeline(preprocessor, svm.SVR(kernel="poly", degree=i)),
+    #          "Support Vector Regression poly "+str(i)+" "+app, X, y))
+    # regressors.append(
+    #     (regression, get_pipeline(preprocessor, svm.SVR(kernel="sigmoid")),
+    #      "Support Vector Regression sigmoid "+app, X, y))
+    #
+    # regressors.append(
+    #     (regression, get_pipeline(preprocessor, make_pipeline(StandardScaler(), SGDRegressor(max_iter=1000, tol=1e-3))),
+    #      "Linear Stochastic Gradient Descent Regressor "+app, X, y))
+    #
+    # for i in range(1, 7+1):
+    #     regressors.append(
+    #         (regression, get_pipeline(preprocessor, KNeighborsRegressor(n_neighbors=i)),
+    #          str(i)+" Nearest Neighbors Regressor "+app, X, y))
+    #
+    # if app != "nekbonebaseline":
+    #     # NOTE: Anything larger than 2 is cut down to 2.
+    #     for i in range(1, 2+1):
+    #         regressors.append(
+    #             (regression, get_pipeline(preprocessor, PLSRegression(n_components=i)),
+    #              str(i)+" PLS Regression "+app, X, y))
+    #
+    # for i in range(1, 2 + 1):
+    #     layer_size = int((len(columns) + 1) / 2) # (Input size + output size) / 2
+    #     layers = tuple(layer_size for _ in range(i))
+    #     regressors.append(
+    #         (regression, get_pipeline(preprocessor, MLPRegressor(activation="relu", hidden_layer_sizes=layers, random_state=1, max_iter=500)),
+    #          str(i)+" MLP Regressor relu "+app, X, y))
+    #
+    # # NOTE: Preprocessing is bad for these. Use raw values.
+    # if app == "SWFFT":
+    #     regressors.append(
+    #         (regression, AnalyticalRegressor(columns), "Analytical Regressor "+app, X, y))
+    # regressors.append(
+    #     (regression, TsafrirRegressor(columns), "Tsafrir Regressor "+app, X, y, True))
+    # regressors.append(
+    #     (regression, ReqtimeRegressor(columns), "Reqtime Regressor "+app, X, y, True))
+    # regressors.append(
+    #     (regression, CompleteRegressor(columns), "Complete Regressor "+app, X, y, True))
+    #
     if only_count:
         return len(regressors)
 
@@ -2140,7 +2146,9 @@ def run_regressor(X, y, preprocessor, model_idx, app="", only_count=False):
     if model_idx >= len(regressors):
         return ""
     # Run the selected regressor.
+    print("running regressors")
     ret += regressors[model_idx][0](*regressors[model_idx][1:])
+    print("done running regressors")
 
     return ret
 
@@ -2271,16 +2279,19 @@ def ml(model_idx, app, baseline, only_count=False):
     numeric_features = []
     categorical_features = []
     # Iterate over every cell.
+    
     for col in X:
         # Identify what type each column is.
+
+        # print("x",X,X.keys(),type(X[col]))
         isNumeric = True
-        for rowIndex, row in X[col].iteritems():
+        for rowIndex, row in X[col].items():
             try:
                 # If it can be a float, make it a float.
-                X[col][rowIndex] = float(X[col][rowIndex])
+                X.loc[col][rowIndex] = float(X[col][rowIndex])
                 # If the float is NaN (unacceptable to Sci-kit), make it -1.0 for now.
                 if pd.isnull(X[col][rowIndex]):
-                    X[col][rowIndex] = -1.0
+                    X.loc[col][rowIndex] = -1.0
             except:
                 # Otherwise, we will assume this is categorical data.
                 isNumeric = False
@@ -2362,15 +2373,17 @@ def main():
         pass
     # Perform machine learning.
     if doML:
+        print("doing ML")
         if model_idx is not None and \
                 app_name is not None:
             ml(model_idx, app_name, baseline)
         else:
+            print("not doing ml but rather something else")
             # TODO: make this concurrent.
-            for base in baseline:
-                for app in enabled_apps:
-                    for model in range(ml(0, app, base, only_count=True)):
-                        ml(model, app, base, only_count=False)
+            print(enabled_apps)
+            for app in enabled_apps:
+                for model in range(ml(0, app, None, only_count=True)):
+                    ml(model, app, None, only_count=False)
 
 
 def exit_gracefully(signum, frame):

@@ -1,0 +1,1 @@
+../../../ExaMiniMD/ExaMiniMD -il input.lj --comm-type MPI --kokkos-threads=16

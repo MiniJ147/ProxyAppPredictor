@@ -6,3 +6,8 @@ output*/
 *.pyc
 
 pickles/*
+tests/ExaMiniMDsnap/
+tests/HACC-IO/
+tests/LAMMPS/
+tests/SWFFT/
+tests/nekbone/

@@ -1,0 +1,18 @@
+# units=lj,lattice=fcc,lattice_constant=0.9869910226135178,lattice_nx=10,lattice_ny=25,lattice_nz=16,ntypes=1,type=1,mass=1.0,temperature_target=1.0,temperature_seed=12345,force_type=lj/cut,force_cutoff=2.897313244217588,neighbor_skin=0.33191512565992887,comm_exchange_rate=20,dt=0.0005469460995939256,thermo_rate=65,nsteps=9471,nodes=2,tasks=8,testNum=94,
+
+units lj
+atom_style atomic
+lattice fcc 0.9869910226135178
+region box block 0 10 0 25 0 16
+create_box 1 box
+create_atoms 1 box
+mass 1 1.0
+velocity all create 1.0 12345
+pair_style lj/cut 2.897313244217588
+pair_coeff 1 1 1.0 1.0
+neighbor 0.33191512565992887 bin
+neigh_modify delay 0 every 20 check no
+fix 1 all nve
+timestep 0.0005469460995939256
+thermo 65
+run 9471

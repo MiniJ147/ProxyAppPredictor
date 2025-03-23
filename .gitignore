@@ -5,7 +5,7 @@ output*/
 
 *.pyc
 
-pickles/*
+pickles/
 tests/ExaMiniMDsnap/
 tests/HACC-IO/
 tests/LAMMPS/

@@ -2196,9 +2196,12 @@ def run_regressor(X, y, preprocessor, model_idx, app="", only_count=False):
     regressor.fit(X_data, y_data)
     
     # Make predictions (optional, depending on your use case)
-    y_pred = regressor.predict(X_data)  # Or predict on test data if available
-    print("pred",y_pred)
-
+    quantiles = [0.025, 0.5, 0.975] # %97.5 confidence 
+    y_pred = regressor.predict(X_data, quantiles = quantiles)  # Or predict on test data if available
+    print("97.5 confidence upper:",y_pred[:,2])
+    print("0.025 confidence", y_pred[:,0])
+    # y_pred_df = pd.DataFrame(y_pred[:,2])
+    # print(y_pred_df[:50])
     print("done running regressors")
 
     return ret

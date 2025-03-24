@@ -2062,97 +2062,146 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
     return ret
 
 
+# def run_regressor(X, y, preprocessor, model_idx, app="", only_count=False):
+#     """ Run a specific regressor for a specific application.
+#     When only_count=True, the number of regressors for the application is
+#     determined, but no regressors actually run.
+#     """
+#
+#     def get_pipeline(preprocessor, clf):
+#         """ Convenience function to add a preprocessor to a regression pipeline.
+#         """
+#         return Pipeline(steps=[("preprocessor", preprocessor), ("classifier", clf)])
+#
+#     # Make sure our features have the expected shape.
+#     # Also useful to keep track of test sizes.
+#     ret = str(X.shape) + "\n"
+#     # Columns must be maintained for some predictors.
+#     columns = list(X.columns)
+#
+#     regressors = []
+#
+#     # Run our regressors.
+#     regressors.append(
+#         (regression, get_pipeline(preprocessor, RandomForestRegressor()),
+#          "Random Forest Regressor "+app, X, y))
+#
+#     # regressors.append(
+#     #     (regression, get_pipeline(preprocessor, tree.DecisionTreeRegressor()),
+#     #      "Decision Tree Regressor "+app, X, y))
+#     #
+#     # regressors.append(
+#     #     (regression, get_pipeline(preprocessor, linear_model.BayesianRidge()),
+#     #      "Bayesian Ridge "+app, X, y))
+#     #
+#     # regressors.append(
+#     #     (regression, get_pipeline(preprocessor, svm.SVR()),
+#     #      "Support Vector Regression RBF "+app, X, y))
+#     # for i in range(1, 3+1):
+#     #     regressors.append(
+#     #         (regression, get_pipeline(preprocessor, svm.SVR(kernel="poly", degree=i)),
+#     #          "Support Vector Regression poly "+str(i)+" "+app, X, y))
+#     # regressors.append(
+#     #     (regression, get_pipeline(preprocessor, svm.SVR(kernel="sigmoid")),
+#     #      "Support Vector Regression sigmoid "+app, X, y))
+#     #
+#     # regressors.append(
+#     #     (regression, get_pipeline(preprocessor, make_pipeline(StandardScaler(), SGDRegressor(max_iter=1000, tol=1e-3))),
+#     #      "Linear Stochastic Gradient Descent Regressor "+app, X, y))
+#     #
+#     # for i in range(1, 7+1):
+#     #     regressors.append(
+#     #         (regression, get_pipeline(preprocessor, KNeighborsRegressor(n_neighbors=i)),
+#     #          str(i)+" Nearest Neighbors Regressor "+app, X, y))
+#     #
+#     # if app != "nekbonebaseline":
+#     #     # NOTE: Anything larger than 2 is cut down to 2.
+#     #     for i in range(1, 2+1):
+#     #         regressors.append(
+#     #             (regression, get_pipeline(preprocessor, PLSRegression(n_components=i)),
+#     #              str(i)+" PLS Regression "+app, X, y))
+#     #
+#     # for i in range(1, 2 + 1):
+#     #     layer_size = int((len(columns) + 1) / 2) # (Input size + output size) / 2
+#     #     layers = tuple(layer_size for _ in range(i))
+#     #     regressors.append(
+#     #         (regression, get_pipeline(preprocessor, MLPRegressor(activation="relu", hidden_layer_sizes=layers, random_state=1, max_iter=500)),
+#     #          str(i)+" MLP Regressor relu "+app, X, y))
+#     #
+#     # # NOTE: Preprocessing is bad for these. Use raw values.
+#     # if app == "SWFFT":
+#     #     regressors.append(
+#     #         (regression, AnalyticalRegressor(columns), "Analytical Regressor "+app, X, y))
+#     # regressors.append(
+#     #     (regression, TsafrirRegressor(columns), "Tsafrir Regressor "+app, X, y, True))
+#     # regressors.append(
+#     #     (regression, ReqtimeRegressor(columns), "Reqtime Regressor "+app, X, y, True))
+#     # regressors.append(
+#     #     (regression, CompleteRegressor(columns), "Complete Regressor "+app, X, y, True))
+#     #
+#     if only_count:
+#         return len(regressors)
+#
+#     print("Total model count: " + str(len(regressors)))
+#     if model_idx >= len(regressors):
+#         return ""
+#     # Run the selected regressor.
+#     print("running regressors")
+#     ret += regressors[model_idx][0](*regressors[model_idx][1:])
+#     print("done running regressors")
+#
+#     return ret
+#
+
+from sklearn.preprocessing import StandardScaler
+from quantile_forest import RandomForestQuantileRegressor  # Assuming this is how it's imported
+
 def run_regressor(X, y, preprocessor, model_idx, app="", only_count=False):
     """ Run a specific regressor for a specific application.
     When only_count=True, the number of regressors for the application is
     determined, but no regressors actually run.
     """
 
-    def get_pipeline(preprocessor, clf):
-        """ Convenience function to add a preprocessor to a regression pipeline.
-        """
-        return Pipeline(steps=[("preprocessor", preprocessor), ("classifier", clf)])
-
     # Make sure our features have the expected shape.
-    # Also useful to keep track of test sizes.
     ret = str(X.shape) + "\n"
-    # Columns must be maintained for some predictors.
     columns = list(X.columns)
 
     regressors = []
 
-    # Run our regressors.
+    # Replace Random Forest with Quantile Forest
     regressors.append(
-        (regression, get_pipeline(preprocessor, RandomForestRegressor()),
-         "Random Forest Regressor "+app, X, y))
+        (regression, preprocessor, RandomForestQuantileRegressor(), "Quantile Forest Regressor "+app, X, y))
 
-    # regressors.append(
-    #     (regression, get_pipeline(preprocessor, tree.DecisionTreeRegressor()),
-    #      "Decision Tree Regressor "+app, X, y))
-    #
-    # regressors.append(
-    #     (regression, get_pipeline(preprocessor, linear_model.BayesianRidge()),
-    #      "Bayesian Ridge "+app, X, y))
-    #
-    # regressors.append(
-    #     (regression, get_pipeline(preprocessor, svm.SVR()),
-    #      "Support Vector Regression RBF "+app, X, y))
-    # for i in range(1, 3+1):
-    #     regressors.append(
-    #         (regression, get_pipeline(preprocessor, svm.SVR(kernel="poly", degree=i)),
-    #          "Support Vector Regression poly "+str(i)+" "+app, X, y))
-    # regressors.append(
-    #     (regression, get_pipeline(preprocessor, svm.SVR(kernel="sigmoid")),
-    #      "Support Vector Regression sigmoid "+app, X, y))
-    #
-    # regressors.append(
-    #     (regression, get_pipeline(preprocessor, make_pipeline(StandardScaler(), SGDRegressor(max_iter=1000, tol=1e-3))),
-    #      "Linear Stochastic Gradient Descent Regressor "+app, X, y))
-    #
-    # for i in range(1, 7+1):
-    #     regressors.append(
-    #         (regression, get_pipeline(preprocessor, KNeighborsRegressor(n_neighbors=i)),
-    #          str(i)+" Nearest Neighbors Regressor "+app, X, y))
-    #
-    # if app != "nekbonebaseline":
-    #     # NOTE: Anything larger than 2 is cut down to 2.
-    #     for i in range(1, 2+1):
-    #         regressors.append(
-    #             (regression, get_pipeline(preprocessor, PLSRegression(n_components=i)),
-    #              str(i)+" PLS Regression "+app, X, y))
-    #
-    # for i in range(1, 2 + 1):
-    #     layer_size = int((len(columns) + 1) / 2) # (Input size + output size) / 2
-    #     layers = tuple(layer_size for _ in range(i))
-    #     regressors.append(
-    #         (regression, get_pipeline(preprocessor, MLPRegressor(activation="relu", hidden_layer_sizes=layers, random_state=1, max_iter=500)),
-    #          str(i)+" MLP Regressor relu "+app, X, y))
-    #
-    # # NOTE: Preprocessing is bad for these. Use raw values.
-    # if app == "SWFFT":
-    #     regressors.append(
-    #         (regression, AnalyticalRegressor(columns), "Analytical Regressor "+app, X, y))
-    # regressors.append(
-    #     (regression, TsafrirRegressor(columns), "Tsafrir Regressor "+app, X, y, True))
-    # regressors.append(
-    #     (regression, ReqtimeRegressor(columns), "Reqtime Regressor "+app, X, y, True))
-    # regressors.append(
-    #     (regression, CompleteRegressor(columns), "Complete Regressor "+app, X, y, True))
-    #
     if only_count:
+        print('only counting regressors')
         return len(regressors)
 
     print("Total model count: " + str(len(regressors)))
     if model_idx >= len(regressors):
         return ""
-    # Run the selected regressor.
+
     print("running regressors")
-    ret += regressors[model_idx][0](*regressors[model_idx][1:])
+    # Extracting preprocessor and regressor for clarity
+    _, preprocessor, regressor, _, X_data, y_data = regressors[model_idx]
+    
+    # Apply preprocessing (like scaling or other transformations) manually
+    if preprocessor:
+        X_data = preprocessor.fit_transform(X_data)  # Apply preprocessing to the features
+
+    # Convert sparse matrix to dense (if X_data is sparse)
+    if hasattr(X_data, "toarray"):  # Check if it's a sparse matrix
+        X_data = X_data.toarray()
+
+    # Fit the model (Quantile Forest) directly after preprocessing
+    regressor.fit(X_data, y_data)
+    
+    # Make predictions (optional, depending on your use case)
+    y_pred = regressor.predict(X_data)  # Or predict on test data if available
+    print("pred",y_pred)
+
     print("done running regressors")
 
     return ret
-
-
 def ml(model_idx, app, baseline, only_count=False):
     """ Run machine learning on the DataFrames.
     When only_count=True, the number of regressors for the application is
@@ -2318,7 +2367,7 @@ def ml(model_idx, app, baseline, only_count=False):
     # Run regressors.
     result = run_regressor(X, y, preprocessor, model_idx,
                            app + ("baseline" if baseline else ""), only_count)
-    print(result)
+    print("finished now displaying result",result)
     return result
 
 

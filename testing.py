@@ -1918,6 +1918,7 @@ def depickle_data(name):
 def regression(regressor, model_name, X, y, one_at_a_time=False):
     """ Train and test a regressor on a dataset.
     """
+    print("TEST running regression for",model_name)
     ret = str(model_name) + "\n"
 
     # DEBUG
@@ -1978,24 +1979,44 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
             scores = cross_val_score(regressor, X, y, cv=5,
                                  scoring="r2")
 
-            y_pred = plot_regressor.predict(X_test)
+            y_pred = plot_regressor.predict(X_test) if not is_quantile else plot_regressor.predict(X_test,quantiles=[0.025,0.5,0.975])
+            # y_pred = plot_regressor.predict(X_test)
+
 
             # Pickle the data.
             pickle_data(y, model_name + "_y")
+            print("pickled _y")
             pickle_data(y_pred, model_name + "_y_pred")
+            print("pickled _y_pred")
             pickle_data(scores, model_name + "_scores")
+            print("pickled _scores")
             pickle_data(regressor, model_name + "_regressor")
+            print("pickled _regressor")
             pickle_data(plot_regressor, model_name + "_plot__regressor")
+            print("pickled _plot__regressor")
             pickle_data(X, model_name + "_X")
+            print("pickled _X")
             pickle_data(y, model_name + "_y")
+            print("pickled _y")
             pickle_data(X_test, model_name + "_X_test")
+            print("pickled _X_test")
             pickle_data(y_test, model_name + "_y_test")
+            print("pickled _y_test")
             pickle_data(total_time, model_name + "_total_time")
+            print("pickled _total_time")
 
         # Report cross-validation accuracy.
         ret += " R^2: " + str(scores.mean()) + "\n"
         ret += str(total_time) + "s \n"
 
+
+        if is_quantile: 
+            print("prediction upper:", y_pred[:,2])
+            print("prediction middle:", y_pred[:,1])
+            print("prediction lower:", y_pred[:,0])
+
+            print("TEMP CODE PLEASE REMOVE AFTER")
+            return ret
         plt.scatter(y_pred, y_test, s=20, c="black", label="data")
 
     # plt.xlabel("Predicted (seconds) ("+str(model_name)+")")
@@ -2006,7 +2027,7 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
     #     plt.xscale('log',base=10)
     #     plt.yscale('log',base=10)
     # plt.legend()
-    print("prediction: ",y_pred)
+    print("prediction: ",y_pred,len(y_pred))
     try:
         os.makedirs("figures")
     except FileExistsError:
@@ -2015,12 +2036,15 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
     plt.savefig("figures/"+str(model_name).replace(" ", "")+".svg")
     plt.close()
 
-    if not one_at_a_time:
+    if not one_at_a_time and not is_quantile:
         if should_depickle:
+            print("going to pickle train_sizes, scores, and tests")
             train_sizes = depickle_data(model_name + "_train_sizes")
             train_scores = depickle_data(model_name + "_train_scores")
             test_scores = depickle_data(model_name + "_test_scores")
-        else:
+            print("done pickling")
+        else: 
+            print("calculating learning curve")
             # Plot the learning curves.
             train_sizes, train_scores, test_scores = learning_curve(
                 regressor,
@@ -2191,6 +2215,9 @@ def run_regressor_quantile(X, y, preprocessor, model_idx, app="", only_count=Fal
     print("running regressors")
     # Extracting preprocessor and regressor for clarity
     # _, preprocessor, regressor, _, X_data, y_data = regressors[model_idx]
+    v = regressors[model_idx][0](*regressors[model_idx][1:])
+    res = v
+    print(v)
 
     _, regressor, title, X_data, y_data = regressors[model_idx]
     print("done running",title)
@@ -2206,16 +2233,18 @@ def run_regressor_quantile(X, y, preprocessor, model_idx, app="", only_count=Fal
         X_data = X_data.toarray()
 
     # Fit the model (Quantile Forest) directly after preprocessing
-    regressor.fit(X_data, y_data)
-    
-    # Make predictions (optional, depending on your use case)
-    quantiles = [0.025, 0.5, 0.975] # %97.5 confidence 
-    y_pred = regressor.predict(X_data, quantiles = quantiles)  # Or predict on test data if available
-    print("97.5 confidence upper:",y_pred[:,2])
-    print("0.025 confidence", y_pred[:,0])
-    # y_pred_df = pd.DataFrame(y_pred[:,2])
-    # print(y_pred_df[:50])
-    print("done running regressors")
+    # regression(RandomForestRegressor(),"Quantile Regressor",X_data,y_data)
+    # regressor.fit(X_data, y_data)
+    # 
+    # # Make predictions (optional, depending on your use case)
+    # quantiles = [0.025, 0.5, 0.975] # %97.5 confidence 
+    # y_pred = regressor.predict(X_data, quantiles = quantiles)  # Or predict on test data if available
+    # print("97.5 confidence upper:",y_pred[:,2])
+    # print(len(y_pred[:,2]),max(y_pred[:,2]))
+    # print("0.025 confidence", y_pred[:,0])
+    # # y_pred_df = pd.DataFrame(y_pred[:,2])
+    # # print(y_pred_df[:50])
+    # print("done running regressors")
 
     return ret
 def ml(model_idx, app, baseline, only_count=False):

@@ -1979,6 +1979,7 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
             scores = cross_val_score(regressor, X, y, cv=5,
                                  scoring="r2")
 
+            
             y_pred = plot_regressor.predict(X_test) if not is_quantile else plot_regressor.predict(X_test,quantiles=[0.025,0.5,0.975])
             # y_pred = plot_regressor.predict(X_test)
 
@@ -2011,6 +2012,7 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
 
 
         if is_quantile: 
+            print("95% confidence bounds")
             print("prediction upper:", y_pred[:,2])
             print("prediction middle:", y_pred[:,1])
             print("prediction lower:", y_pred[:,0])

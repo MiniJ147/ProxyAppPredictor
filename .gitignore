@@ -5,6 +5,8 @@ output*/
 
 *.pyc
 
+venv
+
 pickles/
 tests/ExaMiniMDsnap/
 tests/HACC-IO/

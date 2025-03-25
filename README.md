@@ -8,7 +8,7 @@ Generating, testing, and parsing inputs for a  variety of Proxy Apps, both local
 ## Dependencies
 
 ```bash
-pip install wheel numpy pandas sklearn matplotlib
+./init.sh
 ```
 
 ## How to use

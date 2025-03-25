@@ -1,1 +1,1 @@
-python3 testing.py --doML --fromCSV $1
+python3 testing.py --doML --fromCSV $@

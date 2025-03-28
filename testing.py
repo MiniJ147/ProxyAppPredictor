@@ -52,6 +52,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import make_pipeline
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, MinMaxScaler
+from sklearn.metrics import r2_score
 # from complete.complete_regressor import CompleteRegressor
 import matplotlib.pyplot as plt
 
@@ -1915,6 +1916,7 @@ def depickle_data(name):
     return pickle.load(open(PICKLE_DIR + str(name), 'rb'))
 
 
+
 def regression(regressor, model_name, X, y, one_at_a_time=False):
     """ Train and test a regressor on a dataset.
     """
@@ -1980,7 +1982,7 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
                                  scoring="r2")
 
             
-            y_pred = plot_regressor.predict(X_test) if not is_quantile else plot_regressor.predict(X_test,quantiles=[0.025,0.5,0.975])
+            y_pred = plot_regressor.predict(X_test) if not is_quantile else plot_regressor.predict(X_test,quantiles=[0.025,0.5,0.6,0.7,0.8,0.975])
             # y_pred = plot_regressor.predict(X_test)
 
 
@@ -2012,19 +2014,68 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
 
 
         if is_quantile: 
+            # y_pred = y_pred[y_pred[:,0].argsort()]
+            BOUND = len(y_test)
+            lower = y_pred[:BOUND,0]
+            middle = y_pred[:BOUND,1]
+            upper = y_pred[:BOUND:,5]
             print("95% confidence bounds")
-            print("prediction upper:", y_pred[:,2])
-            print("prediction middle:", y_pred[:,1])
-            print("prediction lower:", y_pred[:,0])
+            print("prediction upper:", upper)
+            print("prediction middle:", middle)
+            print("prediction lower:", lower)
+
+            total = 0
+            mxDiff = -1
+            miDiff = 1e9
+            for inv in y_pred:
+                dif = inv[2]-inv[1]
+                total += dif
+                mxDiff = max(dif,mxDiff)
+                miDiff = min(dif,miDiff) 
+            print("avg diff",total/len(y_pred))
+            print("max diff",mxDiff)
+            print("min diff",miDiff)
+            # print(y_test[0:5])
+            # print(y_test)
+            plt.xlabel("Prediction: median")
+            plt.ylabel("Actual Time & Confidence")
+            plt.title("Predictions at 95% Confidence")
+
+            # domain = np.arange(len(y_test))
+            # plt.plot(y_pred[:,1],y_pred[:,2])
+            # plt.fill_between(domain,y_pred[:,0],y_pred[:,2],color='lightgray',alpha=0.5,label="prediction interval")
+            # plt.scatter(domain,y_test,s=10,c="black")
+            # print(len(y_pred[:,1]),len(y_test))
+            # plt.scatter(y_pred[:,1],y_test,s=20, c="black",label="data")
+            # plt.scatter(domain,y_test,s=10,c="black")
+
+            # plt.scatter(y_pred[:2], y_test, s=20, c="black", label="data")
+            domain = middle # assume this is our guess for now
+            print(r2_score(y_test,y_pred[:,4]))
+
+            a,b = np.polyfit(domain,y_pred[:,4],1)
+            plt.scatter(domain,y_test[:BOUND],s=5,c="black",label="real time")
+            plt.plot(domain,a*domain+b)
+            # plt.scatter(domain,y_pred[:,4],s=5,c="red",label="80th quartile")
+            # plt.bar(domain,height=upper[:BOUND]-lower[:BOUND],bottom=lower[:BOUND],width=0.5,alpha=0.3,label="confidence interval")
+            # plt.fill_between(domain,lower,upper,alpha=0.2)
+            # plt.scatter(domain,y_pred[:,0],s=5,c="red")
+            # plt.scatter(domain,y_pred[:,2],s=5,c="blue")
+            plt.legend()
+
+            plt.show()
 
             print("TEMP CODE PLEASE REMOVE AFTER")
             return ret
+        print("point",y_pred[0:5],y_test[0:5],type(y_pred),type(y_test))
+        print(y_test[0:5])
         plt.scatter(y_pred, y_test, s=20, c="black", label="data")
 
     # plt.xlabel("Predicted (seconds) ("+str(model_name)+")")
     # plt.ylabel("Actual (seconds)")
     plt.xlabel("Predicted (minutes) ("+str(model_name)+")")
     plt.ylabel("Actual (minutes)")
+    plt.show()
     # if "ExaMiniMD" in model_name:
     #     plt.xscale('log',base=10)
     #     plt.yscale('log',base=10)

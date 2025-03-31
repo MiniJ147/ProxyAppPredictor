@@ -104,9 +104,9 @@ DEBUG_APPS = False
 # Used to choose which apps to test.
 # range_params.keys() #["ExaMiniMDbase", "ExaMiniMDsnap", "SWFFT", "sw4lite", "nekbone", "miniAMR", "HACC-IO", "LAMMPS"]
 # NOTE: These are the apps I have in my draft.
-# enabled_apps = ["ExaMiniMDsnap", "HACC-IO", "LAMMPS", "SWFFT", "nekbone"]
+enabled_apps = ["ExaMiniMDsnap", "HACC-IO", "LAMMPS", "SWFFT", "nekbone"]
 # Whether or not to shortcut out tests that may be redundant or invalid.
-enabled_apps = ["nekbone"]#["ExaMiniMDsnap"] #"HACC-IO", "LAMMPS", "SWFFT", "nekbone"]
+# enabled_apps = ["nekbone","ExaMiniMDsnap"] #"HACC-IO", "LAMMPS", "SWFFT", "nekbone"]
 SKIP_TESTS = True
 # A global terminate indicator. Set to True to quit gracefully.
 terminate = False
@@ -1923,6 +1923,23 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
     print("TEST running regression for",model_name)
     ret = str(model_name) + "\n"
 
+    # should go into one of the indexs with the array below
+    quant_pred_idx = 0
+    # quantiles = [0.025,0.5,0.6,0.7,0.975]
+    quantiles = [0.5,0.8]#,0.7,0.8,0.90,0.975,0.999]
+
+    colors = [
+        "#ff7f0e",  # Orange
+        "#1f77b4",  # Blue
+        "#2ca02c",  # Green
+        "#d62728",  # Red
+        "#9467bd",  # Purple
+        "#8c564b",  # Brown
+        "#e377c2",  # Pink
+        "#7f7f7f",  # Gray
+        "#bcbd22",  # Olive
+        "#17becf"   # Cyan
+    ]
     # DEBUG
     # assert np.any(np.isinf(X)) and np.any(np.isnan(X)), "Invalid data in X"
     # assert np.any(np.isinf(y)) and np.any(np.isnan(y)), "Invalid data in y"
@@ -1979,10 +1996,8 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
             plot_regressor = regressor.fit(X_train, y_train)
 
             scores = cross_val_score(regressor, X, y, cv=5,
-                                 scoring="r2")
-
-            
-            y_pred = plot_regressor.predict(X_test) if not is_quantile else plot_regressor.predict(X_test,quantiles=[0.025,0.5,0.6,0.7,0.8,0.975])
+                                 scoring="r2") 
+            y_pred = plot_regressor.predict(X_test) if not is_quantile else plot_regressor.predict(X_test,quantiles=quantiles)
             # y_pred = plot_regressor.predict(X_test)
 
 
@@ -2013,33 +2028,56 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
         ret += str(total_time) + "s \n"
 
 
-        if is_quantile: 
-            # y_pred = y_pred[y_pred[:,0].argsort()]
+        if is_quantile and len(quantiles) > 0: 
             BOUND = len(y_test)
-            lower = y_pred[:BOUND,0]
-            middle = y_pred[:BOUND,1]
-            upper = y_pred[:BOUND:,5]
-            print("95% confidence bounds")
-            print("prediction upper:", upper)
-            print("prediction middle:", middle)
-            print("prediction lower:", lower)
+            samples = len(quantiles)
+            confidence_lvl = quantiles[-1]-quantiles[0]
 
-            total = 0
-            mxDiff = -1
-            miDiff = 1e9
-            for inv in y_pred:
-                dif = inv[2]-inv[1]
-                total += dif
-                mxDiff = max(dif,mxDiff)
-                miDiff = min(dif,miDiff) 
-            print("avg diff",total/len(y_pred))
-            print("max diff",mxDiff)
-            print("min diff",miDiff)
-            # print(y_test[0:5])
-            # print(y_test)
-            plt.xlabel("Prediction: median")
-            plt.ylabel("Actual Time & Confidence")
-            plt.title("Predictions at 95% Confidence")
+            
+            plt.xlabel(f"Prediction on the {quantiles[quant_pred_idx]*100}th quantile.")
+            plt.ylabel("Actual Time")
+            plt.title(f"Predictions at {confidence_lvl * 100}% confidence")
+
+            domain = y_pred[:BOUND,quant_pred_idx]
+            plt.scatter(domain,y_test[:BOUND],s=5,c="black",label="real time")
+
+            for i in range(samples):
+                # if i==quant_pred_idx: continue
+                numerator = ((y_test - y_pred[:,i]) ** 2).sum(axis=0)
+                denominator = ((y_test - np.average(y, axis=0)) ** 2).sum(axis=0)
+                score = 1 - numerator / denominator
+
+                plt.scatter(domain,y_pred[:,i],s=5,c=colors[i],label=f"{quantiles[i]*100}th")
+                print(f"R^2 {quantiles[i]*100}: {score}")
+            
+
+
+            # y_pred = y_pred[y_pred[:,0].argsort()]
+            # BOUND = len(y_test)
+            # lower = y_pred[:BOUND,0]
+            # middle = y_pred[:BOUND,1]
+            # upper = y_pred[:BOUND:,5]
+            # print("95% confidence bounds")
+            # print("prediction upper:", upper)
+            # print("prediction middle:", middle)
+            # print("prediction lower:", lower)
+            #
+            # total = 0
+            # mxDiff = -1
+            # miDiff = 1e9
+            # for inv in y_pred:
+            #     dif = inv[2]-inv[1]
+            #     total += dif
+            #     mxDiff = max(dif,mxDiff)
+            #     miDiff = min(dif,miDiff) 
+            # print("avg diff",total/len(y_pred))
+            # print("max diff",mxDiff)
+            # print("min diff",miDiff)
+            # # print(y_test[0:5])
+            # # print(y_test)
+            # plt.xlabel("Prediction: median")
+            # plt.ylabel("Actual Time & Confidence")
+            # plt.title("Predictions at 95% Confidence")
 
             # domain = np.arange(len(y_test))
             # plt.plot(y_pred[:,1],y_pred[:,2])
@@ -2050,13 +2088,14 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
             # plt.scatter(domain,y_test,s=10,c="black")
 
             # plt.scatter(y_pred[:2], y_test, s=20, c="black", label="data")
-            domain = middle # assume this is our guess for now
-            print(r2_score(y_test,y_pred[:,4]))
-
-            a,b = np.polyfit(domain,y_pred[:,4],1)
-            plt.scatter(domain,y_test[:BOUND],s=5,c="black",label="real time")
-            plt.plot(domain,a*domain+b)
+            # domain = middle # assume this is our guess for now
+            # print(r2_score(y_test,y_pred[:,4]))
+            #
+            # a,b = np.polyfit(domain,y_pred[:,4],1)
+            # plt.scatter(domain,y_test[:BOUND],s=5,c="black",label="real time")
+            # plt.plot(domain,a*domain+b)
             # plt.scatter(domain,y_pred[:,4],s=5,c="red",label="80th quartile")
+
             # plt.bar(domain,height=upper[:BOUND]-lower[:BOUND],bottom=lower[:BOUND],width=0.5,alpha=0.3,label="confidence interval")
             # plt.fill_between(domain,lower,upper,alpha=0.2)
             # plt.scatter(domain,y_pred[:,0],s=5,c="red")

@@ -2474,10 +2474,10 @@ def ml(model_idx, app, baseline, only_count=False):
         for rowIndex, row in X[col].items():
             try:
                 # If it can be a float, make it a float.
-                X.loc[col][rowIndex] = float(X[col][rowIndex])
+                X[col][rowIndex] = float(X[col][rowIndex])
                 # If the float is NaN (unacceptable to Sci-kit), make it -1.0 for now.
                 if pd.isnull(X[col][rowIndex]):
-                    X.loc[col][rowIndex] = -1.0
+                    X[col][rowIndex] = -1.0
             except:
                 # Otherwise, we will assume this is categorical data.
                 isNumeric = False

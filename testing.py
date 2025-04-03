@@ -1922,11 +1922,17 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
     """
     print("TEST running regression for",model_name)
     ret = str(model_name) + "\n"
+    try:
+        os.makedirs("figures/"+str(model_name).replace(" ","_"))
+    except FileExistsError:
+        # Directory already exists
+        pass
+
 
     # should go into one of the indexs with the array below
     quant_pred_idx = 0
     # quantiles = [0.025,0.5,0.6,0.7,0.975]
-    quantiles = [0.5,0.8]#,0.7,0.8,0.90,0.975,0.999]
+    quantiles = [0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95]#,0.7,0.8,0.90,0.975,0.999]
 
     colors = [
         "#ff7f0e",  # Orange
@@ -2032,77 +2038,74 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
             BOUND = len(y_test)
             samples = len(quantiles)
             confidence_lvl = quantiles[-1]-quantiles[0]
+            
+            # doing data analysis
+            for i in range(samples):
+                # _, ax = plt.subplots()
+                quart = int(quantiles[i] * 100)
+                guesses = y_pred[:,i]
+                over_est = under_est = prefect_est = 0
+
+                domain = []
+                for j in range(len(y_test)):
+                    guess = guesses[j]
+                    real = y_test.values[j]
+
+                    if guess > real:
+                        over_est += 1
+                    elif guess < real:
+                        under_est += 1
+                    else:
+                        prefect_est += 1
+
+                    domain.append(guess-real)
+                print(f"{quart}th\nOver Est: {over_est}\n Under Est: {under_est}\n Prefect Est: {prefect_est}\n")
+                # ax.hist(domain,range=(min(domain),max(domain)),linewidth=0.5,edgecolor="white")
+                # bins = range(int(min(domain)),int(max(domain)))
+
+                #fixed with
+                lower = int(min(domain))
+                upper = int(math.ceil(max(domain)))
+                bin_width = 1 
+                bins = np.arange(lower - lower % bin_width, upper - upper % bin_width + bin_width, bin_width)
+
+                arr_hist,edges = np.histogram(domain,bins=bins,density=True)
+                # counts, bin_edge, _ = ax.hist(domain,bins=bins,density=True)
+                sig_value = 0.005
+                # print(arr_hist,edges)
+                flitered_data = np.array([v for _, v in enumerate(list(zip(arr_hist,edges))) if v[0]>=sig_value])
+                plt.bar(flitered_data[:,1],flitered_data[:,0],width=bin_width,edgecolor="black",align="edge")
+
+                plt.title(f"{model_name}: {quart}th distrubtion") 
+                plt.xlabel("Deviation from true Runtime (seconds)")
+                plt.ylabel(f"Probability >= {sig_value}")
+
+
+                # print(counts,bin_edge)
+                plt.savefig(f"figures/{str(model_name).replace(" ","_")}/{quart}th_{sig_value}_distrubtion.svg")
+                plt.close()
 
             
             plt.xlabel(f"Prediction on the {quantiles[quant_pred_idx]*100}th quantile.")
             plt.ylabel("Actual Time")
-            plt.title(f"Predictions at {confidence_lvl * 100}% confidence")
+            plt.title(f"{model_name}")
 
-            domain = y_pred[:BOUND,quant_pred_idx]
-            plt.scatter(domain,y_test[:BOUND],s=5,c="black",label="real time")
+            domain = y_pred[:,quant_pred_idx]
+            plt.scatter(domain,y_test[:],s=5,c="black",label="real time")
 
+            # calculating R^2
             for i in range(samples):
-                # if i==quant_pred_idx: continue
                 numerator = ((y_test - y_pred[:,i]) ** 2).sum(axis=0)
                 denominator = ((y_test - np.average(y, axis=0)) ** 2).sum(axis=0)
                 score = 1 - numerator / denominator
 
-                plt.scatter(domain,y_pred[:,i],s=5,c=colors[i],label=f"{quantiles[i]*100}th")
+                if quantiles[i] in [0.5,0.75,0.95]:
+                    plt.scatter(domain,y_pred[:,i],s=5,c=colors[i],label=f"{quantiles[i]*100}th")
                 print(f"R^2 {quantiles[i]*100}: {score}")
             
-
-
-            # y_pred = y_pred[y_pred[:,0].argsort()]
-            # BOUND = len(y_test)
-            # lower = y_pred[:BOUND,0]
-            # middle = y_pred[:BOUND,1]
-            # upper = y_pred[:BOUND:,5]
-            # print("95% confidence bounds")
-            # print("prediction upper:", upper)
-            # print("prediction middle:", middle)
-            # print("prediction lower:", lower)
-            #
-            # total = 0
-            # mxDiff = -1
-            # miDiff = 1e9
-            # for inv in y_pred:
-            #     dif = inv[2]-inv[1]
-            #     total += dif
-            #     mxDiff = max(dif,mxDiff)
-            #     miDiff = min(dif,miDiff) 
-            # print("avg diff",total/len(y_pred))
-            # print("max diff",mxDiff)
-            # print("min diff",miDiff)
-            # # print(y_test[0:5])
-            # # print(y_test)
-            # plt.xlabel("Prediction: median")
-            # plt.ylabel("Actual Time & Confidence")
-            # plt.title("Predictions at 95% Confidence")
-
-            # domain = np.arange(len(y_test))
-            # plt.plot(y_pred[:,1],y_pred[:,2])
-            # plt.fill_between(domain,y_pred[:,0],y_pred[:,2],color='lightgray',alpha=0.5,label="prediction interval")
-            # plt.scatter(domain,y_test,s=10,c="black")
-            # print(len(y_pred[:,1]),len(y_test))
-            # plt.scatter(y_pred[:,1],y_test,s=20, c="black",label="data")
-            # plt.scatter(domain,y_test,s=10,c="black")
-
-            # plt.scatter(y_pred[:2], y_test, s=20, c="black", label="data")
-            # domain = middle # assume this is our guess for now
-            # print(r2_score(y_test,y_pred[:,4]))
-            #
-            # a,b = np.polyfit(domain,y_pred[:,4],1)
-            # plt.scatter(domain,y_test[:BOUND],s=5,c="black",label="real time")
-            # plt.plot(domain,a*domain+b)
-            # plt.scatter(domain,y_pred[:,4],s=5,c="red",label="80th quartile")
-
-            # plt.bar(domain,height=upper[:BOUND]-lower[:BOUND],bottom=lower[:BOUND],width=0.5,alpha=0.3,label="confidence interval")
-            # plt.fill_between(domain,lower,upper,alpha=0.2)
-            # plt.scatter(domain,y_pred[:,0],s=5,c="red")
-            # plt.scatter(domain,y_pred[:,2],s=5,c="blue")
+            
             plt.legend()
-
-            plt.show()
+            plt.savefig(f"figures/{str(model_name).replace(" ","_")}/generic_plots.svg")
 
             print("TEMP CODE PLEASE REMOVE AFTER")
             return ret
@@ -2120,12 +2123,7 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
     #     plt.yscale('log',base=10)
     # plt.legend()
     print("prediction: ",y_pred,len(y_pred))
-    try:
-        os.makedirs("figures")
-    except FileExistsError:
-        # Directory already exists
-        pass
-    plt.savefig("figures/"+str(model_name).replace(" ", "")+".svg")
+    plt.savefig("figures/"+str(model_name).replace(" ", "_")+".svg")
     plt.close()
 
     if not one_at_a_time and not is_quantile:
@@ -2301,7 +2299,7 @@ def run_regressor_quantile(X, y, preprocessor, model_idx, app="", only_count=Fal
         return len(regressors)
 
     print("Total model count: " + str(len(regressors)))
-    if model_idx >= len(regressors):
+    if not is_quantile and model_idx >= len(regressors):
         return ""
 
     print("running regressors")
@@ -2571,7 +2569,7 @@ def main():
     # Perform machine learning.
     if doML:
         print("doing ML")
-        if model_idx is not None and \
+        if (model_idx is not None or is_quantile) and \
                 app_name is not None:
             ml(model_idx, app_name, baseline)
         else:

@@ -2073,14 +2073,54 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
                 # counts, bin_edge, _ = ax.hist(domain,bins=bins,density=True)
                 sig_value = 0.005
                 # print(arr_hist,edges)
-                flitered_data = np.array([v for _, v in enumerate(list(zip(arr_hist,edges))) if v[0]>=sig_value])
-                plt.bar(flitered_data[:,1],flitered_data[:,0],width=bin_width,edgecolor="black",align="edge")
+                flitered_data = np.array([v for _, v in enumerate(list(zip(arr_hist,edges))) if v[0]>=0])
+                
+                # merge on flitered_data
+                cats = []
+                data = []
+                curr = None
 
-                plt.title(f"{model_name}: {quart}th distrubtion") 
-                plt.xlabel("Deviation from true Runtime (seconds)")
-                plt.ylabel(f"Probability >= {sig_value}")
+                def push_curr(curr):
+                    cats.append(f"[{curr[1][0]},{curr[1][1]})")
+                    data.append(curr[0])
+
+                for prob,edge in flitered_data:
+                    if not curr: #first run
+                        curr = [prob,[edge,edge+bin_width]]
+                        continue
+                    if prob >= sig_value:
+                        #push our merge
+                        push_curr(curr)
+                        curr = None
+                        
+                        #push our results
+                        cats.append(f"[{edge},{edge+bin_width})")
+                        data.append(prob)
+                        continue
+                    curr[0] += prob; curr[1][1] = edge+bin_width
+                    if curr[0] >= sig_value:
+                        push_curr(curr)
+                        curr = None
+                        # print("pushed",curr)
+                if curr:
+                    push_curr(curr)
+                # print("cats",cats,"data",data,curr)
 
 
+
+                # plt.bar(flitered_data[:,1],flitered_data[:,0],width=bin_width,edgecolor="black",align="edge")
+                # print(flitered_data[:,0])
+                _, ax = plt.subplots(constrained_layout=True,figsize=(15,7))
+                ax.bar(cats,data,width=0.6,edgecolor="black")
+
+
+                ax.set_title(f"{model_name}: {quart}th distrubtion") 
+                ax.tick_params(axis='x',rotation=35,which='major')
+                ax.set_xlabel("Deviation from true Runtime (seconds)")
+                ax.set_ylabel(f"Probability >= {sig_value}")
+
+
+                # plt.tight_layout()
                 # print(counts,bin_edge)
                 plt.savefig(f"figures/{str(model_name).replace(" ","_")}/{quart}th_{sig_value}_distrubtion.svg")
                 plt.close()

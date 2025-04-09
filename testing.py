@@ -2,6 +2,7 @@
 variety of Proxy Apps, both locally and on the Voltrino HPC testbed.
 """
 
+import csv
 import argparse
 from cmath import inf, nan
 import concurrent.futures
@@ -1932,7 +1933,7 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
     # should go into one of the indexs with the array below
     quant_pred_idx = 0
     # quantiles = [0.025,0.5,0.6,0.7,0.975]
-    quantiles = [0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95]#,0.7,0.8,0.90,0.975,0.999]
+    quantiles = [0.5,0.75,0.95,0.975,0.985,0.99,0.995,0.999]#,0.7,0.8,0.90,0.975,0.999]
 
     colors = [
         "#ff7f0e",  # Orange
@@ -2038,18 +2039,27 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
             BOUND = len(y_test)
             samples = len(quantiles)
             confidence_lvl = quantiles[-1]-quantiles[0]
-            
-            # doing data analysis
+
+                        # doing data analysis
             for i in range(samples):
                 # _, ax = plt.subplots()
-                quart = int(quantiles[i] * 100)
+                quart = round(quantiles[i] * 100,2)
                 guesses = y_pred[:,i]
                 over_est = under_est = prefect_est = 0
-
+                
+                
+                MAX_FAIL_PRECT = 200.0
+                fail = 0
                 domain = []
                 for j in range(len(y_test)):
                     guess = guesses[j]
                     real = y_test.values[j]
+                    if real == 0: continue
+
+                    div = int((guess/real)*100)
+
+                    if div > MAX_FAIL_PRECT:
+                        fail+=1
 
                     if guess > real:
                         over_est += 1
@@ -2058,83 +2068,60 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
                     else:
                         prefect_est += 1
 
-                    domain.append(guess-real)
-                print(f"{quart}th\nOver Est: {over_est}\n Under Est: {under_est}\n Prefect Est: {prefect_est}\n")
-                # ax.hist(domain,range=(min(domain),max(domain)),linewidth=0.5,edgecolor="white")
-                # bins = range(int(min(domain)),int(max(domain)))
+                    domain.append(div) 
+
+                print(f"{quart}th\nOver Est: {over_est}\n Under Est: {under_est}\n Prefect Est: {prefect_est}\nFails: {fail}")
 
                 #fixed with
                 lower = int(min(domain))
                 upper = int(math.ceil(max(domain)))
-                bin_width = 1 
-                bins = np.arange(lower - lower % bin_width, upper - upper % bin_width + bin_width, bin_width)
+                bins = [0,60,80,90,100,140,180,200,max(201,upper)]
 
-                arr_hist,edges = np.histogram(domain,bins=bins,density=True)
-                # counts, bin_edge, _ = ax.hist(domain,bins=bins,density=True)
-                sig_value = 0.005
-                # print(arr_hist,edges)
-                flitered_data = np.array([v for _, v in enumerate(list(zip(arr_hist,edges))) if v[0]>=0])
+                counts,edges = np.histogram(domain,bins=bins)
+                size = len(edges); cnt_sum = counts.sum()
+                vals = []; cats = []
+
+
+                # summing for our labels
+                skips = [[90,0],[100,0],[200,0]]
+                sidx = 0
+                for i in range(size-1):
+                    if edges[i] >= skips[sidx][0]:
+                        sidx+=1
+                    prob = round(counts[i]/cnt_sum,5)
+                    if i+1 == size-1: 
+                        cats.append(">=200%")
+                        skips.append([201,prob])
+                    else: 
+                        cats.append(f"[{edges[i]}%,{edges[i+1]}%)")
+                        skips[sidx][1]+=prob
+                    vals.append(prob)
+
+                key = f"Probability:\n<90% = {skips[0][1]:.5f}%\n[90%,100%): = {skips[1][1]:.5f}%\n[100%,200%): = {skips[2][1]:.5f}%\n>200% = {skips[3][1]:.5f}%"
                 
-                # merge on flitered_data
-                cats = []
-                data = []
-                curr = None
-
-                def push_curr(curr):
-                    cats.append(f"[{curr[1][0]},{curr[1][1]})")
-                    data.append(curr[0])
-
-                for prob,edge in flitered_data:
-                    if not curr: #first run
-                        curr = [prob,[edge,edge+bin_width]]
-                        continue
-                    if prob >= sig_value:
-                        #push our merge
-                        push_curr(curr)
-                        curr = None
-                        
-                        #push our results
-                        cats.append(f"[{edge},{edge+bin_width})")
-                        data.append(prob)
-                        continue
-                    curr[0] += prob; curr[1][1] = edge+bin_width
-                    if curr[0] >= sig_value:
-                        push_curr(curr)
-                        curr = None
-                        # print("pushed",curr)
-                if curr:
-                    push_curr(curr)
-                # print("cats",cats,"data",data,curr)
+                plt.xlabel(f"Precentage of Real Runtime")
+                plt.ylabel("Probability")
+                plt.title(f"{model_name}-{quart}th-distribution")
 
 
+                plt.annotate(key,xy=(0,0),xytext=(0,-40),xycoords='axes fraction',textcoords='offset points',va='top',ha='left')
+                plt.bar(cats,vals)
+                plt.tick_params(axis='x',rotation=25,which="major",labelsize=8)
+                plt.tight_layout()
 
-                # plt.bar(flitered_data[:,1],flitered_data[:,0],width=bin_width,edgecolor="black",align="edge")
-                # print(flitered_data[:,0])
-                _, ax = plt.subplots(constrained_layout=True,figsize=(15,7))
-                ax.bar(cats,data,width=0.6,edgecolor="black")
-
-
-                ax.set_title(f"{model_name}: {quart}th distrubtion") 
-                ax.tick_params(axis='x',rotation=35,which='major')
-                ax.set_xlabel("Deviation from true Runtime (seconds)")
-                ax.set_ylabel(f"Probability >= {sig_value}")
-
-
-                # plt.tight_layout()
-                # print(counts,bin_edge)
-                plt.savefig(f"figures/{str(model_name).replace(" ","_")}/{quart}th_{sig_value}_distrubtion.svg")
+                plt.savefig(f"figures/{str(model_name).replace(" ","_")}/{quart}th_distrubtion.svg")
                 plt.close()
 
             
-            plt.xlabel(f"Prediction on the {quantiles[quant_pred_idx]*100}th quantile.")
-            plt.ylabel("Actual Time")
+            plt.xlabel(f"Actual Job Time (seconds)")
+            plt.ylabel("Time (seconds)")
             plt.title(f"{model_name}")
 
-            domain = y_pred[:,quant_pred_idx]
-            plt.scatter(domain,y_test[:],s=5,c="black",label="real time")
+            # domain = y_pred[:,quant_pred_idx]
+            domain = y_test[:]
 
             # calculating R^2
-            for i in range(samples):
+            for i in range(samples-1,-1,-1):
                 numerator = ((y_test - y_pred[:,i]) ** 2).sum(axis=0)
                 denominator = ((y_test - np.average(y, axis=0)) ** 2).sum(axis=0)
                 score = 1 - numerator / denominator
@@ -2142,6 +2129,8 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
                 if quantiles[i] in [0.5,0.75,0.95]:
                     plt.scatter(domain,y_pred[:,i],s=5,c=colors[i],label=f"{quantiles[i]*100}th")
                 print(f"R^2 {quantiles[i]*100}: {score}")
+
+            plt.scatter(domain,y_test[:],s=5,c="black",label="Actual Time")
             
             
             plt.legend()

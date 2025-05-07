@@ -2109,7 +2109,8 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
                 plt.tick_params(axis='x',rotation=25,which="major",labelsize=8)
                 plt.tight_layout()
 
-                plt.savefig(f"figures/{str(model_name).replace(" ","_")}/{quart}th_distrubtion.svg")
+                fig_name = str(model_name).replace(" ","_")
+                plt.savefig(f"figures/{fig_name}/{quart}th_distrubtion.svg")
                 plt.close()
 
             
@@ -2134,7 +2135,9 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
             
             
             plt.legend()
-            plt.savefig(f"figures/{str(model_name).replace(" ","_")}/generic_plots.svg")
+
+            fig_name = str(model_name).replace(" ","_")
+            plt.savefig(f"figures/{fig_name}/generic_plots.svg")
 
             print("TEMP CODE PLEASE REMOVE AFTER")
             return ret

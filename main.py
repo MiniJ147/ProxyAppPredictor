@@ -66,13 +66,26 @@ def get_pipeline(preprocessor, clf):
 
 if __name__ == "__main__":
     print("hello world!")
-    v = app.Nekbone("timeTaken","./tests/nekbonedataset.csv")
-    X,y = v.parse()
-    preprocessor = generate_preprocessor(X)
-    # driver.Base().run(get_pipeline(preprocessor,RandomForestRegressor()),"Random Forest Regressor "+v.name,X,y)
-    # driver.Single().run(CompleteRegressor(list(X.columns)),"complete regressor"+v.name,X,y)
-    driver.Quantile().run(get_pipeline(preprocessor, RandomForestQuantileRegressor()),
-                    "Quantile Forest "+v.name,
+    apps = [
+        app.Nekbone("timeTaken","./tests/nekbonedataset.csv"),
+        # app.HACC_IO("timeTaken","./tests/HACC-IOdataset.csv"),
+        app.SWFFT("timeTaken","./tests/SWFFTdataset.csv"),
+        app.ExaMiniMD("timeTaken","./tests/ExaMiniMDsnapdataset.csv"),
+    ]
+
+    for app in apps:
+        print("running app: ",app.name)
+        X,y = app.parse()
+        preprocessor = generate_preprocessor(X)
+        driver.Quantile().run(get_pipeline(preprocessor, RandomForestQuantileRegressor()),
+                    "Quantile Forest "+app.name,
                     X,y,[0.5,0.75,0.95,0.975,0.985,0.99,0.995,0.999])
 
 
+    # X,y = v.parse()
+    # preprocessor = generate_preprocessor(X)
+    # driver.Base().run(get_pipeline(preprocessor,RandomForestRegressor()),"Random Forest Regressor "+v.name,X,y)
+    # driver.Single().run(CompleteRegressor(list(X.columns)),"complete regressor"+v.name,X,y)
+    # driver.Quantile().run(get_pipeline(preprocessor, RandomForestQuantileRegressor()),
+    #                 "Quantile Forest "+v.name,
+    #                 X,y,[0.5,0.75,0.95,0.975,0.985,0.99,0.995,0.999])

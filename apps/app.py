@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 class App:
     def __init__(self, name: str, pred_col, test_file_path: str):
@@ -57,7 +58,7 @@ class App:
 
 class Nekbone(App):
     def __init__(self,pred_col,test_file_path: str):
-        super().__init__("nekbone",pred_col,test_file_path)
+        super().__init__("Nekbone",pred_col,test_file_path)
 
     def parse(self):
         X,y = super().parse()
@@ -70,5 +71,101 @@ class Nekbone(App):
         X = X.drop(columns="timeTaken")
         X = X.drop(columns="testNum")
         return X,y
+
+class ExaMiniMD(App):
+    def __init__(self,pred_col,test_file_path: str):
+        super().__init__("ExaMiniMD",pred_col,test_file_path)
+
+    def parse(self):
+        X,y = super().parse()
+        PREDICTION = self.pred_col
+
+        if PREDICTION == "timeTaken":
+            y = X["timeTaken"].astype(float)
+            y = y.fillna(86400.0*2)
+
+        drop_columns = [ 
+            "timeTaken",
+            "testNum",
+            "units",
+            "lattice",
+            "lattice_constant",
+            "lattice_offset_x",
+            "lattice_offset_y",
+            "lattice_offset_z",
+            "lattice_ny",
+            "lattice_nz",
+            "ntypes",
+            "type",
+            "mass",
+            "force_cutoff",
+            "temperature_target",
+            "temperature_seed",
+            "neighbor_skin",
+            "comm_exchange_rate",
+            "thermo_rate",
+            "comm_newton"
+        ]
+
+        for col in drop_columns:
+            X = X.drop(columns=col)
+
+        return X,y
+
+class LAMMPS(App):
+    def __init__(self,pred_col,test_file_path: str):
+        super().__init__("LAMMPS",pred_col,test_file_path)
+
+    range_params = {}
+    def parse(self):
+        X,y = super().parse()
+        PREDICTION = self.pred_col
+
+        if PREDICTION == "timeTaken":
+            y = X["timeTaken"].astype(float)
+            y = y.fillna(86400.0*2)
+
+        assert True==False, "NOT RANGE_PARAMS NOT IMPLEMENTED"
+        for column in list(X.columns):
+            if column not in self.range_params["LAMMPS"]:
+                X = X.drop(columns=column)
+
+
+        return X,y
+     
+
+class SWFFT(App):
+    def __init__(self,pred_col,test_file_path: str):
+        super().__init__("SWFFT",pred_col,test_file_path)
+
+    def parse(self):
+        X,y = super().parse()
+        PREDICTION = self.pred_col
+
+        if PREDICTION == "timeTaken":
+            y = X["timeTaken"].astype(float)
+            y = y.fillna(86400.0*2)
+
+        X["ngy"] = np.where(X["ngy"].isna(), X["ngx"], X["ngy"])
+        X["ngz"] = np.where(X["ngz"].isna(), X["ngy"], X["ngz"])
+
+
+        return X,y
+
+class HACC_IO(App):
+    def __init__(self,pred_col,test_file_path: str):
+        super().__init__("HACC_IO",pred_col,test_file_path)
+
+    def parse(self):
+        X,y = super().parse()
+        PREDICTION = self.pred_col
+
+        if PREDICTION == "timeTaken":
+            y = X["timeTaken"].astype(float)
+            y = y.fillna(86400.0*2)
+
+        return X,y
+
+
 
 

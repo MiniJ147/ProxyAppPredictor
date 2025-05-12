@@ -115,6 +115,7 @@ terminate = False
 should_depickle = False
 
 # LAMMPS SNAP file contents for ExaMiniMD SNAP testing.
+#[TODO]: Add these to seperate files and figure out there use case
 SNAP_FILE = ('# DATE: 2014-09-05 CONTRIBUTOR: Aidan Thompson athomps@sandia.gov CITATION: Thompson, Swiler, Trott, Foiles and Tucker, arxiv.org, 1409.3880 (2014)\n'
              '\n'
              '# Definition of SNAP potential Ta_Cand06A\n'
@@ -184,6 +185,7 @@ SNAPPARAM_FILE = ('# DATE: 2014-09-05 CONTRIBUTOR: Aidan Thompson athomps@sandia
                   'bzeroflag 0\n'
                   'quadraticflag 0\n')
 
+#[TODO]: change this to json files
 # A set of sane defaults based on 3d Lennard-Jones melt (in.lj).
 default_params["ExaMiniMDbase"] = {"units": "lj",
                                    "lattice": "fcc",
@@ -722,6 +724,7 @@ def get_next_index(app):
     return idx
 
 
+#[NOTE]: could remove?
 def make_slurm_script(f):
     """ Fill in the base contents of the SLURM script.
     Use format_map() to substitute parameters.
@@ -2229,6 +2232,8 @@ def run_regressor(X, y, preprocessor, model_idx, app="", only_count=False):
     regressors = []
 
     # Run our regressors.
+
+    # def regression(regressor, model_name, X, y, one_at_a_time=False):
     regressors.append(
         (regression, get_pipeline(preprocessor, RandomForestRegressor()),
          "Random Forest Regressor "+app, X, y))

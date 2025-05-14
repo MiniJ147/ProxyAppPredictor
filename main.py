@@ -16,6 +16,8 @@ from apps import app
 from drivers import base as driver
 
 # helper
+# [NOTE]: do not use X.loc for some reason it will take 100x longer to train
+#         idk if it doesn't actually parse it correctly or what, but watch out
 def generate_preprocessor(X):
     numeric_features = []
     categorical_features = []
@@ -26,10 +28,10 @@ def generate_preprocessor(X):
         for rowIndex, row in X[col].items():
             try:
                 # If it can be a float, make it a float.
-                X.loc[col][rowIndex] = float(X[col][rowIndex])
+                X[col][rowIndex] = float(X[col][rowIndex])
                 # If the float is NaN (unacceptable to Sci-kit), make it -1.0 for now.
                 if pd.isnull(X[col][rowIndex]):
-                    X.loc[col][rowIndex] = -1.0
+                    X[col][rowIndex] = -1.0
             except:
                 # Otherwise, we will assume this is categorical data.
                 isNumeric = False
@@ -37,7 +39,7 @@ def generate_preprocessor(X):
             # For whatever reason, float conversions don't want to work in Pandas dataframes.
             # Try changing the value column-wide instead.
             # TODO: Doesn't seem to actually solve anything.
-            X.loc[col] = X[col].astype(float)
+            X[col] = X[col].astype(float)
             numeric_features.append(str(col))
         else:
             categorical_features.append(str(col))
@@ -67,9 +69,9 @@ def get_pipeline(preprocessor, clf):
 if __name__ == "__main__":
     print("hello world!")
     apps = [
-        app.Nekbone("timeTaken","./tests/nekbonedataset.csv"),
+        # app.Nekbone("timeTaken","./tests/nekbonedataset.csv"),
         # app.HACC_IO("timeTaken","./tests/HACC-IOdataset.csv"),
-        app.SWFFT("timeTaken","./tests/SWFFTdataset.csv"),
+        # app.SWFFT("timeTaken","./tests/SWFFTdataset.csv"),
         app.ExaMiniMD("timeTaken","./tests/ExaMiniMDsnapdataset.csv"),
     ]
 
@@ -77,6 +79,7 @@ if __name__ == "__main__":
         print("running app: ",app.name)
         X,y = app.parse()
         preprocessor = generate_preprocessor(X)
+        # driver.Base().run(get_pipeline(preprocessor,RandomForestRegressor()),"Random Forest Regressor "+app.name,X,y)
         driver.Quantile().run(get_pipeline(preprocessor, RandomForestQuantileRegressor()),
                     "Quantile Forest "+app.name,
                     X,y,[0.5,0.75,0.95,0.975,0.985,0.99,0.995,0.999])

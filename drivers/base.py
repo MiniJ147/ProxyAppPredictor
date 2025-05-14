@@ -23,6 +23,7 @@ class Base:
         """
         this will run the regressor and return the y_pred and results
         """
+        print(model_name,"running base driver")
         self.setup_figures(model_name)
         ret = str(model_name) + "\n"
 
@@ -33,6 +34,9 @@ class Base:
         regressor = regressor.fit(X, y)
         endTime = time.process_time()
         total_time = endTime - startTime
+    
+        print(model_name,"trained",total_time)
+
         # Retrain on 4/5 of the data for plotting.
         X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.2, random_state=42)

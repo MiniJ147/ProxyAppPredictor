@@ -14,7 +14,6 @@ from sklearn import feature_selection
 from parser import parse
 from apps import app 
 from drivers import base as driver
-from helpers import pickler
 
 # helper
 # [NOTE]: do not use X.loc for some reason it will take 100x longer to train

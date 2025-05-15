@@ -14,6 +14,7 @@ from sklearn import feature_selection
 from parser import parse
 from apps import app 
 from drivers import base as driver
+from helpers import pickler
 
 # helper
 # [NOTE]: do not use X.loc for some reason it will take 100x longer to train
@@ -68,6 +69,7 @@ def get_pipeline(preprocessor, clf):
 
 if __name__ == "__main__":
     print("hello world!")
+
     apps = [
         # app.Nekbone("timeTaken","./tests/nekbonedataset.csv"),
         # app.HACC_IO("timeTaken","./tests/HACC-IOdataset.csv"),
@@ -84,11 +86,11 @@ if __name__ == "__main__":
                     "Quantile Forest "+app.name,
                     X,y,[0.5,0.75,0.95,0.975,0.985,0.99,0.995,0.999])
 
-
-    # X,y = v.parse()
-    # preprocessor = generate_preprocessor(X)
-    # driver.Base().run(get_pipeline(preprocessor,RandomForestRegressor()),"Random Forest Regressor "+v.name,X,y)
-    # driver.Single().run(CompleteRegressor(list(X.columns)),"complete regressor"+v.name,X,y)
-    # driver.Quantile().run(get_pipeline(preprocessor, RandomForestQuantileRegressor()),
-    #                 "Quantile Forest "+v.name,
-    #                 X,y,[0.5,0.75,0.95,0.975,0.985,0.99,0.995,0.999])
+    #
+    # # X,y = v.parse()
+    # # preprocessor = generate_preprocessor(X)
+    # # driver.Base().run(get_pipeline(preprocessor,RandomForestRegressor()),"Random Forest Regressor "+v.name,X,y)
+    # # driver.Single().run(CompleteRegressor(list(X.columns)),"complete regressor"+v.name,X,y)
+    # # driver.Quantile().run(get_pipeline(preprocessor, RandomForestQuantileRegressor()),
+    # #                 "Quantile Forest "+v.name,
+    # #                 X,y,[0.5,0.75,0.95,0.975,0.985,0.99,0.995,0.999])

@@ -1,5 +1,37 @@
 import pandas as pd
 import numpy as np
+import numbers
+import random
+import functools
+import json
+
+app_params = json.load(open('./apps/params.json'))
+
+# |===== helpers with params stuff =====|
+def get_pow_2(upper,lower=1):
+    """ Get a uniform random power of 2 between 1 and limit.
+    """
+    max_bits = upper.bit_length() - 1
+    min_bits = lower.bit_length() - 1
+    power = random.randint(min_bits, max_bits)
+    return 2 ** power
+    
+def factors(n):
+    return set(functools.reduce(list.__add__, ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0)))
+
+def fill_empty_params(params, range_params):
+    # Explicitly fill in unused parameters with None.
+    # This is important to ensure default values aren't used,
+    # to ensure CSV alignment, and to have some default value to train on.
+    for param, values in range_params.items():
+        if param not in params:
+            params[param] = None
+
+    return params 
+
+# |===================================|
+
+
 
 class App:
     def __init__(self, name: str, pred_col, test_file_path: str):
@@ -7,6 +39,58 @@ class App:
         self.test_file_path = test_file_path
         self.pred_col = pred_col
         self.df = None
+
+        assert app_params[name] != None, "app does not exist in app_params"
+        self.default_params = app_params[name]["default"]
+        self.range_params = app_params[name]["range"]
+
+    def make_input_file(self, file_dir: str):
+        assert True==False, "not implemented yet"
+        pass 
+
+    def rand_param(self,param, values=''):
+        """ Pick a random parameter value within a valid range.
+        The approach used depends on the data type of the values."""
+        if values == '':
+            values = self.range_params[param]
+        # If it is a boolean
+        if isinstance(values[-1], bool):
+            # Pick one of the values at random.
+            return random.choice(values)
+        # If it is a number:
+        elif isinstance(values[-1], numbers.Number):
+            # Get the lowest value.
+            min_v = min(x for x in values if x is not None)
+            # Get the highest value.
+            max_v = max(x for x in values if x is not None)
+            # Pick a random number between min and max to use as the parameter value.
+            if isinstance(values[-1], float):
+                return random.uniform(min_v, max_v)
+            elif isinstance(values[-1], int):
+                return random.randint(min_v, max_v)
+            else:
+                print("Found a range with type" + str(type(values[-1])))
+                return random.randrange(min_v, max_v)
+        # Else if it has no meaningful range (ex. str):
+        else:
+            # Pick one of the values at random.
+            return random.choice(values)
+ 
+
+    def get_params(self):   
+        print(f"getting {self.name} params")
+        params = {}
+        params["nodes"] = get_pow_2(max(x for x in self.range_params["nodes"] if x is not None))
+        params["tasks"] = get_pow_2(max(x for x in self.range_params["tasks"] if x is not None))
+
+        # default case
+        for param, values in self.range_params.items():
+            if param not in params:
+                params[param] = self.rand_param(param)
+        
+        
+        return fill_empty_params(params,self.range_params) 
+
 
     def parse(self):
         """
@@ -58,7 +142,7 @@ class App:
 
 class Nekbone(App):
     def __init__(self,pred_col,test_file_path: str):
-        super().__init__("Nekbone",pred_col,test_file_path)
+        super().__init__("nekbone",pred_col,test_file_path)
 
     def parse(self):
         X,y = super().parse()
@@ -71,10 +155,84 @@ class Nekbone(App):
         X = X.drop(columns="timeTaken")
         X = X.drop(columns="testNum")
         return X,y
+    
+    def get_params(self):
+        params = {} 
+
+        params["nodes"] = get_pow_2(max(x for x in self.range_params["nodes"] if x is not None))
+        params["tasks"] = get_pow_2(max(x for x in self.range_params["tasks"] if x is not None))
+
+        LELT = 1000
+        params["ielN"] = super().rand_param("ielN")
+
+        assert(params["ielN"] <= LELT)
+        params["iel0"] = super().rand_param("iel0", [
+            min(x for x in self.range_params["iel0"] if x is not None),
+            params["ielN"]])
+        assert(params["iel0"] <= params["ielN"])
+
+        params["istep"] = super().rand_param("istep")
+
+        LX1 = 12
+        params["nxN"] = super().rand_param("nxN")
+        assert(params["nxN"] <= LX1)
+
+        params["nx0"] = self.rand_param("nx0", [
+            min(x for x in self.range_params["nx0"] if x is not None),
+            params["nxN"]])
+
+        assert(params["nx0"] <= params["nxN"])
+
+        params["nstep"] = self.rand_param("nstep")
+
+        if random.choice(range(2)):
+            # Automatically find the decomposition.
+            params["npx"] = 0
+            params["npy"] = 0
+            params["npz"] = 0
+            params["mx"] = 0
+            params["my"] = 0
+            params["mz"] = 0
+        else:
+            LP = 1000
+            assert(params["nodes"] <= LP)
+            processes_count = params["nodes"] # TODO: Verify this is the correct number.
+            proc_count = []
+            proc_count.append(int(random.choice(list(factors(processes_count)))))
+            proc_count.append(
+                int(random.choice(list(factors(processes_count/proc_count[0])))))
+            proc_count.append(int(processes_count/proc_count[0]/proc_count[1]))
+            random.shuffle(proc_count)
+            params["npx"] = proc_count.pop()
+            params["npy"] = proc_count.pop()
+            params["npz"] = proc_count.pop()
+
+            LELT = 1000
+            assert(params["tasks"] <= LELT)
+
+            processes_count = params["tasks"] # TODO: Verify this is the correct number.
+            proc_count = []
+            proc_count.append(int(random.choice(list(factors(processes_count)))))
+            proc_count.append(
+                int(random.choice(list(factors(processes_count/proc_count[0])))))
+            proc_count.append(int(processes_count/proc_count[0]/proc_count[1]))
+            random.shuffle(proc_count)
+            params["mx"] = proc_count.pop()
+            params["my"] = proc_count.pop()
+            params["mz"] = proc_count.pop()
+
+        # Set remaining parameters.
+        for param, values in self.range_params.items():
+            if param not in params:
+                params[param] = self.rand_param(param)
+        
+        return fill_empty_params(params,self.range_params) 
+
+
 
 class ExaMiniMD(App):
     def __init__(self,pred_col,test_file_path: str):
-        super().__init__("ExaMiniMD",pred_col,test_file_path)
+        super().__init__("ExaMiniMDbase",pred_col,test_file_path)
 
     def parse(self):
         X,y = super().parse()
@@ -112,11 +270,21 @@ class ExaMiniMD(App):
 
         return X,y
 
+    # def get_params(self):
+        # return super()
+        # params = {} 
+
+        # params["nodes"] = get_pow_2(max(x for x in self.range_params["nodes"] if x is not None))
+        # params["tasks"] = get_pow_2(max(x for x in self.range_params["tasks"] if x is not None))
+
+        # return fill_empty_params(params,self.range_params) 
+
+
+
 class LAMMPS(App):
     def __init__(self,pred_col,test_file_path: str):
         super().__init__("LAMMPS",pred_col,test_file_path)
 
-    range_params = {}
     def parse(self):
         X,y = super().parse()
         PREDICTION = self.pred_col
@@ -125,13 +293,24 @@ class LAMMPS(App):
             y = X["timeTaken"].astype(float)
             y = y.fillna(86400.0*2)
 
-        assert True==False, "NOT RANGE_PARAMS NOT IMPLEMENTED"
+        # assert True==False, "NOT RANGE_PARAMS NOT IMPLEMENTED"
         for column in list(X.columns):
-            if column not in self.range_params["LAMMPS"]:
+            if column not in self.range_params:
                 X = X.drop(columns=column)
 
 
         return X,y
+
+    def get_params(self):
+        params = {} 
+
+        params["nodes"] = get_pow_2(max(x for x in self.range_params["nodes"] if x is not None))
+        params["tasks"] = get_pow_2(max(x for x in self.range_params["tasks"] if x is not None))
+
+
+
+        return fill_empty_params(params,self.range_params) 
+
      
 
 class SWFFT(App):
@@ -152,9 +331,34 @@ class SWFFT(App):
 
         return X,y
 
+    def get_params(self):
+        params = {} 
+
+        params["nodes"] = get_pow_2(max(x for x in self.range_params["nodes"] if x is not None))
+        params["tasks"] = get_pow_2(max(x for x in self.range_params["tasks"] if x is not None))
+
+        params["n_repetitions"] = super().rand_param("n_repetitions")
+
+        params["ngx"] = get_pow_2(max(x for x in self.range_params["ngx"] if x is not None),
+                                  min(x for x in self.range_params["ngx"] if x is not None))
+
+        if random.choice(range(2)):
+            params["ngy"] = get_pow_2(max(x for x in self.range_params["ngy"] if x is not None),
+                                      min(x for x in self.range_params["ngy"] if x is not None))
+        else:
+            params["ngy"] = None
+
+        if params["ngy"] is not None and random.choice(range(2)):
+            params["ngz"] = get_pow_2(max(x for x in self.range_params["ngz"] if x is not None),
+                                      min(x for x in self.range_params["ngz"] if x is not None))
+        else:
+            params["ngz"] = None
+
+        return fill_empty_params(params,self.range_params) 
+
 class HACC_IO(App):
     def __init__(self,pred_col,test_file_path: str):
-        super().__init__("HACC_IO",pred_col,test_file_path)
+        super().__init__("HACC-IO",pred_col,test_file_path)
 
     def parse(self):
         X,y = super().parse()
@@ -165,6 +369,14 @@ class HACC_IO(App):
             y = y.fillna(86400.0*2)
 
         return X,y
+
+    # def get_params(self):
+    #     params = {} 
+
+    #     params["nodes"] = get_pow_2(max(x for x in self.range_params["nodes"] if x is not None))
+    #     params["tasks"] = get_pow_2(max(x for x in self.range_params["tasks"] if x is not None))
+
+    #     return fill_empty_params(params,self.range_params) 
 
 
 

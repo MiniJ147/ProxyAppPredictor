@@ -70,20 +70,23 @@ if __name__ == "__main__":
     print("hello world!")
 
     apps = [
-        # app.Nekbone("timeTaken","./tests/nekbonedataset.csv"),
-        # app.HACC_IO("timeTaken","./tests/HACC-IOdataset.csv"),
+        app.Nekbone("timeTaken","./tests/nekbonedataset.csv"),
+        app.HACC_IO("timeTaken","./tests/HACC-IOdataset.csv"),
         # app.SWFFT("timeTaken","./tests/SWFFTdataset.csv"),
         app.ExaMiniMD("timeTaken","./tests/ExaMiniMDsnapdataset.csv"),
     ]
 
-    for app in apps:
-        print("running app: ",app.name)
-        X,y = app.parse()
-        preprocessor = generate_preprocessor(X)
-        # driver.Base().run(get_pipeline(preprocessor,RandomForestRegressor()),"Random Forest Regressor "+app.name,X,y)
-        driver.Quantile().run(get_pipeline(preprocessor, RandomForestQuantileRegressor()),
-                    "Quantile Forest "+app.name,
-                    X,y,[0.5,0.75,0.95,0.975,0.985,0.99,0.995,0.999])
+    x = apps[1]
+    print(x.get_params())
+
+    # for app in apps:
+    #     print("running app: ",app.name)
+    #     X,y = app.parse()
+    #     preprocessor = generate_preprocessor(X)
+    #     # driver.Base().run(get_pipeline(preprocessor,RandomForestRegressor()),"Random Forest Regressor "+app.name,X,y)
+    #     driver.Quantile().run(get_pipeline(preprocessor, RandomForestQuantileRegressor()),
+    #                 "Quantile Forest "+app.name,
+    #                 X,y,[0.5,0.75,0.95,0.975,0.985,0.99,0.995,0.999])
 
     #
     # # X,y = v.parse()

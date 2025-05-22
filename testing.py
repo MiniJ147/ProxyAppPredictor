@@ -2641,3 +2641,21 @@ if __name__ == "__main__":
     original_sigint = signal.getsignal(signal.SIGINT)
     # Run main.
     main()
+
+    # [NOTE]: Test code to verify json was made properly
+    # print("test")
+    # import json
+    # apps_data = json.load(open("./apps/params.json","r"))
+    # print(apps_data["nekbone"]["default"])
+    # print(default_params["nekbone"])
+    # vapps = ["nekbone","ExaMiniMDbase","ExaMiniMDsnap","LAMMPS","SWFFT","sw4lite","miniAMR","HACC-IO"]
+    # for vapp in vapps:
+    #     r1 = apps_data[vapp]["default"] == default_params[vapp]
+    #     r2 = apps_data[vapp]["range"] == range_params[vapp]
+    #     if not r1 and r2:
+    #         print(vapp,r1,r2)
+    #     else:
+    #         print(vapp,"passed")
+    # print(apps_data["nekbone"]["default"] == default_params["nekbone"])
+
+

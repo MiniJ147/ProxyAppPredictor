@@ -76,8 +76,8 @@ if __name__ == "__main__":
         app.ExaMiniMD("timeTaken","./tests/ExaMiniMDsnapdataset.csv"),
     ]
 
-    x = apps[1]
-    print(x.get_params())
+    x = apps[0]
+    print(x.get_params(),x.make_file(x.get_params()))
 
     # for app in apps:
     #     print("running app: ",app.name)

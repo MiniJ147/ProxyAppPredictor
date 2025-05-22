@@ -29,6 +29,16 @@ def fill_empty_params(params, range_params):
 
     return params 
 
+def params_to_string(params):
+    """ Convert the parameters list to a string.
+    Used as comments on input files to make the parameters used clear.
+    """
+    string = ""
+    for param in params:
+        string += param + "=" \
+            + str("None" if params[param] is None else params[param]) + ","
+    return string
+
 # |===================================|
 
 
@@ -44,9 +54,9 @@ class App:
         self.default_params = app_params[name]["default"]
         self.range_params = app_params[name]["range"]
 
+    # returns empty string if not no input file exists
     def make_input_file(self, file_dir: str):
-        assert True==False, "not implemented yet"
-        pass 
+        return ""
 
     def rand_param(self,param, values=''):
         """ Pick a random parameter value within a valid range.
@@ -75,6 +85,10 @@ class App:
         else:
             # Pick one of the values at random.
             return random.choice(values)
+    
+    def make_file(self,params) -> str:
+        assert 1==0, "MAKE_FILE NOT MADE..."
+        return ""
  
 
     def get_params(self):   
@@ -228,6 +242,14 @@ class Nekbone(App):
         
         return fill_empty_params(params,self.range_params) 
 
+    def make_file(self,params) -> str:
+        contents = ('{ifbrick} = ifbrick ! brick or linear geometry\n'
+                    '{iel0} {ielN} {istep} = iel0,ielN(per proc),stride ! range of number of elements per proc.\n'
+                    '{nx0} {nxN} {nstep} = nx0,nxN,stride ! poly. order range for nx1\n'
+                    '{npx} {npy} {npz} = npx,npy,npz ! np distrb, if != np, nekbone handle\n'
+                    '{mx} {my} {mz} = mx,my,mz ! nelt distrb, if != nelt, nekbone handle\n').format_map(params)
+        return contents
+
 
 
 class ExaMiniMD(App):
@@ -270,6 +292,40 @@ class ExaMiniMD(App):
 
         return X,y
 
+
+    def make_file(self,params) -> str:
+        contents = ""
+        ontents += "# " + params_to_string(params) + "\n\n"
+        contents += "units {units}\n".format_map(params)
+        contents += "atom_style atomic\n"
+        if params["lattice_constant"] is not None:
+            contents += "lattice {lattice} {lattice_constant}\n".format_map(
+                params)
+        else:
+            contents += "lattice {lattice} {lattice_offset_x} {lattice_offset_y} {lattice_offset_z}\n".format_map(
+                params)
+        contents += "region box block 0 {lattice_nx} 0 {lattice_ny} 0 {lattice_nz}\n".format_map(
+            params)
+        if params["ntypes"] is not None:
+            contents += "create_box {ntypes}\n".format_map(params)
+        contents += "create_atoms\n"
+        contents += "mass {type} {mass}\n".format_map(params)
+        if params["force_type"] != "snap":
+            contents += "pair_style {force_type} {force_cutoff}\n".format_map(
+                params)
+        else:
+            contents += "pair_style {force_type}\n".format_map(params)
+            contents += "pair_coeff * * Ta06A.snapcoeff Ta Ta06A.snapparam Ta\n"
+        contents += "velocity all create {temperature_target} {temperature_seed}\n".format_map(
+            params)
+        contents += "neighbor {neighbor_skin}\n".format_map(params)
+        contents += "neigh_modify every {comm_exchange_rate}\n".format_map(
+            params)
+        contents += "fix 1 all nve\n"
+        contents += "thermo {thermo_rate}\n".format_map(params)
+        contents += "timestep {dt}\n".format_map(params)
+        contents += "newton {comm_newton}\n".format_map(params)
+        contents += "run {nsteps}\n".format_map(params)
     # def get_params(self):
         # return super()
         # params = {} 
@@ -301,15 +357,41 @@ class LAMMPS(App):
 
         return X,y
 
-    def get_params(self):
-        params = {} 
+    def make_file(self,params) -> str:
+        contents = "" 
+        contents += "# " + params_to_string(params) + "\n\n"
+        contents += "units {units}\n".format_map(params)
+        contents += "atom_style atomic\n"
+        contents += "lattice {lattice} {lattice_constant}\n".format_map(params)
+        contents += "region box block 0 {lattice_nx} 0 {lattice_ny} 0 {lattice_nz}\n".format_map(
+            params)
+        contents += "create_box {ntypes} box\n".format_map(params)
+        contents += "create_atoms 1 box\n"
+        contents += "mass {type} {mass}\n".format_map(params)
+        contents += "velocity all create {temperature_target} {temperature_seed}\n".format_map(
+            params)
+        contents += "pair_style {force_type} {force_cutoff}\n".format_map(
+            params)
+        contents += "pair_coeff 1 1 1.0 1.0\n"
+        contents += "neighbor {neighbor_skin} bin\n".format_map(params)
+        contents += "neigh_modify delay 0 every {comm_exchange_rate} check no\n".format_map(
+            params)
+        contents += "fix 1 all nve\n"
+        contents += "timestep {dt}\n".format_map(params)
+        contents += "thermo {thermo_rate}\n".format_map(params)
+        contents += "run {nsteps}\n".format_map(params)
+        return contents
 
-        params["nodes"] = get_pow_2(max(x for x in self.range_params["nodes"] if x is not None))
-        params["tasks"] = get_pow_2(max(x for x in self.range_params["tasks"] if x is not None))
+    # def get_params(self):
+    #     params = {} 
+
+    #     params["nodes"] = get_pow_2(max(x for x in self.range_params["nodes"] if x is not None))
+    #     params["tasks"] = get_pow_2(max(x for x in self.range_params["tasks"] if x is not None))
 
 
 
-        return fill_empty_params(params,self.range_params) 
+    #     return fill_empty_params(params,self.range_params) 
+
 
      
 

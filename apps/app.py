@@ -1,9 +1,20 @@
 import pandas as pd
 import numpy as np
+import copy
 import numbers
 import random
+import platform
 import functools
 import json
+
+from . import consts
+
+from pathlib import Path
+
+
+TEST_DIR = "./tests/"
+DEBUG_APPS = False
+SYSTEM = platform.node()
 
 app_params = json.load(open('./apps/params.json'))
 
@@ -39,6 +50,83 @@ def params_to_string(params):
             + str("None" if params[param] is None else params[param]) + ","
     return string
 
+#[TODO] clean this up later once we get more info...
+def get_command(app, params):
+    """ Build up the appropriate command for this application run.
+    """
+    # Get the executable.
+    if "voltrino" in SYSTEM:
+        exe = "/projects/ovis/UCF/voltrino_run/"
+    elif "eclipse" in SYSTEM or "ghost" in SYSTEM:
+            exe = "/projects/ovis/UCF/eclipse_run/"
+    else:
+        exe = "../../../"
+
+    if app.startswith("ExaMiniMD"):
+        exe += "ExaMiniMD" + "/" + "ExaMiniMD"
+    elif app == "HACC-IO":
+        exe += "HACC-IO" + "/" + "hacc_io"
+    elif app.startswith("LAMMPS"):
+        exe += "LAMMPS" + "/"
+        if "voltrino" in SYSTEM:
+            exe += "lmp_voltrino"
+        elif "eclipse" in SYSTEM or "ghost" in SYSTEM:
+            exe += "LAMMPS"
+    elif "nekbone" in app:
+        exe = "/projects/ovis/UCF/eclipse_apps/nekbone-3.1/test/example1/nekbone"
+    else:
+        exe += str(app) + "/" + str(app)
+    # nekbone, LAMMPS and HACC-IO don't have debug builds.
+    if DEBUG_APPS and app != "nekbone" and app != "LAMMPS" and app != "HACC-IO":
+        exe += ".g"
+
+    args = ""
+    if app.startswith("ExaMiniMD"):
+        args = "-il input.lj"
+        args += " --comm-type MPI --kokkos-threads={tasks}".format_map(params)
+    elif app.startswith("LAMMPS"):
+        args = "-i in.ar.lj"
+    elif app == "SWFFT":
+        # Locally adjust the params list to properly handle None.
+        for param in params:
+            params[param] = params[param] is not None and params[param] or ''
+        args = "{n_repetitions} {ngx} {ngy} {ngz}".format_map(params)
+    elif app == "sw4lite":
+        args = "input.in"
+    elif app == "nekbone":
+        args = ""
+    elif app == "miniAMR":
+        for param in params:
+            # Each of our standard parameters starts with "--".
+            if param.startswith("--"):
+                # If the parameter is unset, don't add it to the args list.
+                if not params[param] or params[param] is None or params[param] == '':
+                    continue
+                # If the parameter is a flag with no value, add it alone.
+                if params[param] is True:
+                    args += param + " "
+                # Standard parameters add their name and value.
+                else:
+                    args += param + " " + str(params[param]) + " "
+            # load is a special case.
+            # Its value is the argument.
+            if param == "load":
+                args += "--" + params["load"] + " "
+        # Create the number of objects we need to specify.
+        for _ in range(params["--num_objects"]):
+            # Fill in each of these arguments.
+            args += "--object {type} {bounce} {center_x} {center_y} {center_z} \
+                {movement_x} {movement_y} {movement_z} {size_x} {size_y} \
+                {size_z} {inc_x} {inc_y} {inc_z} ".format_map(params)
+    elif app == "HACC-IO":
+        args = "{numParticles} ".format_map(
+            params)
+        args += "/projects/ovis/UCF/data/" + SYSTEM + str(params["testNum"])
+
+    # Assemble the whole command.
+    command = exe + " " + args
+    return command
+
 # |===================================|
 
 
@@ -49,6 +137,7 @@ class App:
         self.test_file_path = test_file_path
         self.pred_col = pred_col
         self.df = None
+        self.features = {}
 
         assert app_params[name] != None, "app does not exist in app_params"
         self.default_params = app_params[name]["default"]
@@ -153,6 +242,77 @@ class App:
 
         # assert not (REMOVE_ERRORS and self.pred_col == "error") 
         return X, y
+
+    def generate_test(self, prod, index):
+        """ Create a test instance and queue up a job to run it.
+        """
+        app = self.name
+        # These are the defaults right now.
+        script_params = {"app": app,
+                        "nodes": prod["nodes"],
+                        "tasks": prod["tasks"]}
+
+        # Get the default parameters, which we will adjust.
+        params = copy.copy(self.default_params)
+        # Update the params based on our cartesian product.
+        params.update(prod)
+        # Add the test number to the list of params.
+        params["testNum"] = index
+
+        # Initialize the app's dictionary.
+        if app not in self.features:
+            self.features = {}
+        # Add the parameters to a DataFrame.
+        self.features[index] = params
+
+        # Create a folder to hold a SLURM script and any input files needed.
+        test_path = Path(TEST_DIR + app + "/" + str(index).zfill(10))
+        test_path.mkdir(parents=True, exist_ok=True)
+
+        # NOTE: Add support for compiling per-test binaries from here, if needed.
+
+        # Generate the input file contents.
+        file_string = self.make_file(params)
+        # If a file_string was generated
+        if file_string != "":
+            # Save the contents to an appropriately named file.
+            if app.startswith("ExaMiniMD"):
+                file_name = "input.lj"
+            elif app.startswith("LAMMPS"):
+                file_name = "in.ar.lj"
+            elif app == "sw4lite":
+                file_name = "input.in"
+            elif app == "nekbone":
+                file_name = "data.rea"
+            print(file_string)
+            with open(test_path / file_name, "w+", encoding="utf-8") as text_file:
+                text_file.write(file_string)
+
+        if app.startswith("ExaMiniMD") and params["force_type"] == "snap":
+            # Copy in Ta06A.snap, Ta06A.snapcoeff, and Ta06A.snapparam.
+            with open(test_path / "Ta06A.snap", "w+", encoding="utf-8") as text_file:
+                text_file.write(consts.SNAP_FILE)
+            with open(test_path / "Ta06A.snapcoeff", "w+", encoding="utf-8") as text_file:
+                text_file.write(consts.SNAPCOEFF_FILE)
+            with open(test_path / "Ta06A.snapparam", "w+", encoding="utf-8") as text_file:
+                text_file.write(consts.SNAPPARAM_FILE)
+
+        # Get the full command, with executable and arguments.
+        command = get_command(app, params)
+        # Set the command in the parameters.
+        # Everything else was set earlier.
+        script_params["command"] = command
+
+        if "voltrino" in SYSTEM or "eclipse" in SYSTEM or "ghost" in SYSTEM:
+            # Generate the SLURM script contents.
+            assert 0==1, "make slurm script is not a thing yet..."
+            slurm_string = make_slurm_script(script_params)
+            # Save the contents to an appropriately named file.
+            with open(test_path / "submit.slurm", "w+", encoding="utf-8") as text_file:
+                text_file.write(slurm_string)
+
+        return command 
+
 
 class Nekbone(App):
     def __init__(self,pred_col,test_file_path: str):
@@ -295,7 +455,7 @@ class ExaMiniMD(App):
 
     def make_file(self,params) -> str:
         contents = ""
-        ontents += "# " + params_to_string(params) + "\n\n"
+        contents += "# " + params_to_string(params) + "\n\n"
         contents += "units {units}\n".format_map(params)
         contents += "atom_style atomic\n"
         if params["lattice_constant"] is not None:
@@ -326,6 +486,7 @@ class ExaMiniMD(App):
         contents += "timestep {dt}\n".format_map(params)
         contents += "newton {comm_newton}\n".format_map(params)
         contents += "run {nsteps}\n".format_map(params)
+        return contents
     # def get_params(self):
         # return super()
         # params = {} 

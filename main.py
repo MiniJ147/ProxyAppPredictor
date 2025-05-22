@@ -1,5 +1,6 @@
 import pandas as pd
 
+import apps.app
 from predictors.complete.complete_regressor import CompleteRegressor
 
 from quantile_forest import RandomForestQuantileRegressor  # Assuming this is how it's imported
@@ -11,9 +12,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn import feature_selection
 
-from parser import parse
-from apps import app 
 from drivers import base as driver
+from apps import app
 
 # helper
 # [NOTE]: do not use X.loc for some reason it will take 100x longer to train
@@ -71,13 +71,14 @@ if __name__ == "__main__":
 
     apps = [
         app.Nekbone("timeTaken","./tests/nekbonedataset.csv"),
-        app.HACC_IO("timeTaken","./tests/HACC-IOdataset.csv"),
+        # app.HACC_IO("timeTaken","./tests/HACC-IOdataset.csv"),
         # app.SWFFT("timeTaken","./tests/SWFFTdataset.csv"),
-        app.ExaMiniMD("timeTaken","./tests/ExaMiniMDsnapdataset.csv"),
+        # app.ExaMiniMD("timeTaken","./tests/ExaMiniMDsnapdataset.csv"),
     ]
 
-    x = apps[2]
-    print(x.generate_test(x.get_params(),0))
+    x = apps[0]
+    # print(x.generate_test(x.get_params(),1))
+    print(x.get_params())
 
     # for app in apps:
     #     print("running app: ",app.name)

@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 import copy
 import numbers
 import random
@@ -15,6 +16,8 @@ from pathlib import Path
 TEST_DIR = "./tests/"
 DEBUG_APPS = False
 SYSTEM = platform.node()
+
+# ExaMiniMDbase
 
 app_params = json.load(open('./apps/params.json'))
 
@@ -143,10 +146,6 @@ class App:
         self.default_params = app_params[name]["default"]
         self.range_params = app_params[name]["range"]
 
-    # returns empty string if not no input file exists
-    def make_input_file(self, file_dir: str):
-        return ""
-
     def rand_param(self,param, values=''):
         """ Pick a random parameter value within a valid range.
         The approach used depends on the data type of the values."""
@@ -176,7 +175,6 @@ class App:
             return random.choice(values)
     
     def make_file(self,params) -> str:
-        assert 1==0, "MAKE_FILE NOT MADE..."
         return ""
  
 
@@ -311,8 +309,46 @@ class App:
             with open(test_path / "submit.slurm", "w+", encoding="utf-8") as text_file:
                 text_file.write(slurm_string)
 
-        return command 
+        return (command,test_path)
 
+    def scrape_output(self, output, index):
+        """ Scrape the output for runtime, errors, etc.
+        """
+        lines = output.split('\n')
+        for line in lines:
+            if "error" in line or "fatal" in line or "libhugetlbfs" in line:
+                if "Plugin file not found" in line:
+                    continue
+                if "Stale file handle" in line:
+                    continue
+                if "error" not in self.features[index].keys():
+                    self.features[index]["error"] = ""
+                self.features[index]["error"] += line + "\n"
+            if line.startswith("timeTaken = "):
+                self.features[index]["timeTaken"] = \
+                    int(line[len("timeTaken = "):])
+        return self.features
+    
+    def append_test(self,test):
+        """ Append the test results to a CSV file for later analysis.
+        """
+        app = self.name
+
+        # The location of the output CSV.
+        output_file = TEST_DIR + app + "dataset.csv"
+        # We only add the header if we are creating the file fresh.
+        needs_header = not os.path.exists(output_file)
+        # Make sure the error key is there. Otherwise, it'll be missing sometimes.
+        # NOTE: We need to do this for any field that is not guaranteed to be
+        # present in all tests. Additionally, things will break badly if new
+        # features are added in the future. We must start from scratch in such a case.
+        if "error" not in self.features[test].keys():
+            self.features[test]["error"] = ""
+        # Convert the test to a DataFrame.
+        dataframe = pd.DataFrame(self.features[test], index=[
+                                self.features[test]["testNum"]])
+        # Append to CSV.
+        dataframe.to_csv(output_file, mode='a', header=needs_header)
 
 class Nekbone(App):
     def __init__(self,pred_col,test_file_path: str):

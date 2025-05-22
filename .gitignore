@@ -14,3 +14,4 @@ tests/HACC-IO/
 tests/LAMMPS/
 tests/SWFFT/
 tests/nekbone/
+tests/ExaMiniMDbase/

@@ -1,6 +1,8 @@
 import pandas as pd
 
 import apps.app
+import argparse
+
 from predictors.complete.complete_regressor import CompleteRegressor
 
 from quantile_forest import RandomForestQuantileRegressor  # Assuming this is how it's imported
@@ -14,6 +16,7 @@ from sklearn import feature_selection
 
 from drivers import base as driver
 from apps import app
+from helpers import pickler
 
 # helper
 # [NOTE]: do not use X.loc for some reason it will take 100x longer to train
@@ -69,6 +72,18 @@ def get_pipeline(preprocessor, clf):
 if __name__ == "__main__":
     print("hello world!")
 
+    # getting args
+    parser = argparse.ArgumentParser(
+        description="Test and train a predictive framework."
+    )
+    parser.add_argument("--depickle", action='store_true',
+                        help="Whether to compute ML models or depickle already-made ones from file")
+    args = parser.parse_args()
+
+    # setting pickler
+    pickler.set_should_depickle(args.depickle)
+
+    # setting apps
     apps = [
         app.Nekbone("timeTaken","./tests/nekbonedataset.csv"),
         # app.HACC_IO("timeTaken","./tests/HACC-IOdataset.csv"),
@@ -76,18 +91,19 @@ if __name__ == "__main__":
         # app.ExaMiniMD("timeTaken","./tests/ExaMiniMDsnapdataset.csv"),
     ]
 
+    # test
     x = apps[0]
     # print(x.generate_test(x.get_params(),1))
     print(x.get_params())
 
-    # for app in apps:
-    #     print("running app: ",app.name)
-    #     X,y = app.parse()
-    #     preprocessor = generate_preprocessor(X)
-    #     # driver.Base().run(get_pipeline(preprocessor,RandomForestRegressor()),"Random Forest Regressor "+app.name,X,y)
-    #     driver.Quantile().run(get_pipeline(preprocessor, RandomForestQuantileRegressor()),
-    #                 "Quantile Forest "+app.name,
-    #                 X,y,[0.5,0.75,0.95,0.975,0.985,0.99,0.995,0.999])
+    for app in apps:
+        print("running app: ",app.name)
+        X,y = app.parse()
+        preprocessor = generate_preprocessor(X)
+        # driver.Base().run(get_pipeline(preprocessor,RandomForestRegressor()),"Random Forest Regressor "+app.name,X,y)
+        driver.Quantile().run(get_pipeline(preprocessor, RandomForestQuantileRegressor()),
+                    "Quantile Forest "+app.name,
+                    X,y,[0.5,0.75,0.95,0.975,0.985,0.99,0.995,0.999])
 
     #
     # # X,y = v.parse()

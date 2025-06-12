@@ -1,3 +1,11 @@
+"""
+@brief:
+    Goal of this file is to hold the job running functionality of our applications.
+    Very much copied from the original testing.py file, but still works separated which is nice.
+    Quick warning somethings are integrated into the app base class which should be fine but something to keep noted.
+@todo:
+    maybe work should be taken to make it easier to use for new users but that should only happen if it matters
+"""
 import subprocess
 import os
 import signal

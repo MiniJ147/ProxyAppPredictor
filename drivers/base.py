@@ -8,8 +8,17 @@ from sklearn.model_selection import train_test_split
 
 import os
 import matplotlib.pyplot as plt
+from helpers import pickler
 
+should_depickle = False
 
+"""
+@brief:
+    Base class holds the logic necessary to run most sklearn regressors without any issues.
+    To add your own custom Driver just override the Base class and add your own functionality
+@TODO:
+    the pickling system could get cleaned up but right now I don't have the energy to do that so...
+"""
 class Base:
     def setup_figures(self,model_name):
         try:
@@ -27,25 +36,58 @@ class Base:
         self.setup_figures(model_name)
         ret = str(model_name) + "\n"
 
-        # DEBUG
         y_pred = []
-        # Some predictors only work properly when given one job at a time.
-        startTime = time.process_time()
-        regressor = regressor.fit(X, y)
-        endTime = time.process_time()
-        total_time = endTime - startTime
-    
-        print(model_name,"trained",total_time)
+        if pickler.should_depickle():
+            y = pickler.depickle(model_name + "_y")
+            y_pred = pickler.depickle(model_name + "_y_pred")
+            scores = pickler.depickle(model_name + "_scores")
+            regressor = pickler.depickle(model_name + "_regressor")
+            plot_regressor = pickler.depickle(model_name + "_plot__regressor")
+            X = pickler.depickle(model_name + "_X")
+            y = pickler.depickle(model_name + "_y")
+            X_test = pickler.depickle(model_name + "_X_test")
+            y_test = pickler.depickle(model_name + "_y_test")
+            total_time = pickler.depickle(model_name + "_total_time")
+        else:
+            # DEBUG
+            # Some predictors only work properly when given one job at a time.
+            startTime = time.process_time()
+            regressor = regressor.fit(X, y)
+            endTime = time.process_time()
+            total_time = endTime - startTime
+        
+            print(model_name,"trained",total_time)
 
-        # Retrain on 4/5 of the data for plotting.
-        X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42)
-        plot_regressor = regressor.fit(X_train, y_train)
+            # Retrain on 4/5 of the data for plotting.
+            X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=0.2, random_state=42)
+            plot_regressor = regressor.fit(X_train, y_train)
 
-        scores = cross_val_score(regressor, X, y, cv=5,
-                                 scoring="r2")
+            scores = cross_val_score(regressor, X, y, cv=5,
+                                    scoring="r2")
 
-        y_pred = plot_regressor.predict(X_test)
+            y_pred = plot_regressor.predict(X_test)
+            
+            pickler.pickle(y, model_name + "_y")
+            print("pickled _y")
+            pickler.pickle(y_pred, model_name + "_y_pred")
+            print("pickled _y_pred")
+            pickler.pickle(scores, model_name + "_scores")
+            print("pickled _scores")
+            pickler.pickle(regressor, model_name + "_regressor")
+            print("pickled _regressor")
+            pickler.pickle(plot_regressor, model_name + "_plot__regressor")
+            print("pickled _plot__regressor")
+            pickler.pickle(X, model_name + "_X")
+            print("pickled _X")
+            pickler.pickle(y, model_name + "_y")
+            print("pickled _y")
+            pickler.pickle(X_test, model_name + "_X_test")
+            print("pickled _X_test")
+            pickler.pickle(y_test, model_name + "_y_test")
+            print("pickled _y_test")
+            pickler.pickle(total_time, model_name + "_total_time")
+            print("pickled _total_time")
 
                     # Report cross-validation accuracy.
         ret += " R^2: " + str(scores.mean()) + "\n"
@@ -78,11 +120,17 @@ class Single(Base):
         super().setup_figures(model_name)
         assert len(X) == len(y)
         y_pred = []
-        for i in range(len(X)):
-            xVal = X.iloc[i]
-            yVal = y.iloc[i]
-            prediction = regressor.predict_and_fit(xVal, yVal)
-            y_pred.append(prediction)
+        if pickler.should_depickle():
+            y = pickler.depickle(model_name + "_y")
+            y_pred = pickler.depickle(model_name + "_y_pred")
+        else:
+            for i in range(len(X)):
+                xVal = X.iloc[i]
+                yVal = y.iloc[i]
+                prediction = regressor.predict_and_fit(xVal, yVal)
+                y_pred.append(prediction)
+            pickler.pickle(y, model_name + "_y")
+            pickler.pickle(y_pred, model_name + "_y_pred")
 
 
         # R^2 calculation since cross_val_score isn't meaningful here.
@@ -96,7 +144,9 @@ class Single(Base):
         return ret
         
 
-
+'''
+Holds logic for running quantile forest
+'''
 class Quantile(Base):
     def run(self,regressor,model_name,X,y,*args):
         super().setup_figures(model_name)
@@ -106,20 +156,53 @@ class Quantile(Base):
 
         # DEBUG
         y_pred = []
-        # Some predictors only work properly when given one job at a time.
-        startTime = time.process_time()
-        regressor = regressor.fit(X, y)
-        endTime = time.process_time()
-        total_time = endTime - startTime
-        # Retrain on 4/5 of the data for plotting.
-        X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42)
-        plot_regressor = regressor.fit(X_train, y_train)
 
-        scores = cross_val_score(regressor, X, y, cv=5,
-                                 scoring="r2")
+        if pickler.should_depickle():
+            y = pickler.depickle(model_name + "_y")
+            y_pred = pickler.depickle(model_name + "_y_pred")
+            scores = pickler.depickle(model_name + "_scores")
+            regressor = pickler.depickle(model_name + "_regressor")
+            plot_regressor = pickler.depickle(model_name + "_plot__regressor")
+            X = pickler.depickle(model_name + "_X")
+            y = pickler.depickle(model_name + "_y")
+            X_test = pickler.depickle(model_name + "_X_test")
+            y_test = pickler.depickle(model_name + "_y_test")
+            total_time = pickler.depickle(model_name + "_total_time")
+        else:
+            startTime = time.process_time()
+            regressor = regressor.fit(X, y)
+            endTime = time.process_time()
+            total_time = endTime - startTime
+            # Retrain on 4/5 of the data for plotting.
+            X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=0.2, random_state=42)
+            plot_regressor = regressor.fit(X_train, y_train)
 
-        y_pred = plot_regressor.predict(X_test,quantiles=quantiles)
+            scores = cross_val_score(regressor, X, y, cv=5,
+                                    scoring="r2")
+
+            y_pred = plot_regressor.predict(X_test,quantiles=quantiles)
+            
+            pickler.pickle(y, model_name + "_y")
+            print("pickled _y")
+            pickler.pickle(y_pred, model_name + "_y_pred")
+            print("pickled _y_pred")
+            pickler.pickle(scores, model_name + "_scores")
+            print("pickled _scores")
+            pickler.pickle(regressor, model_name + "_regressor")
+            print("pickled _regressor")
+            pickler.pickle(plot_regressor, model_name + "_plot__regressor")
+            print("pickled _plot__regressor")
+            pickler.pickle(X, model_name + "_X")
+            print("pickled _X")
+            pickler.pickle(y, model_name + "_y")
+            print("pickled _y")
+            pickler.pickle(X_test, model_name + "_X_test")
+            print("pickled _X_test")
+            pickler.pickle(y_test, model_name + "_y_test")
+            print("pickled _y_test")
+            pickler.pickle(total_time, model_name + "_total_time")
+            print("pickled _total_time")
 
                     # Report cross-validation accuracy.
         ret += " R^2: " + str(scores.mean()) + "\n"

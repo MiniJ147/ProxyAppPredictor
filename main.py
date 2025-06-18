@@ -61,6 +61,42 @@ def generate_preprocessor(X):
 
     return preprocessor
 
+def generate_empire_preprocessor(X):
+    sel = feature_selection.VarianceThreshold(threshold=0)
+    # X = sel.fit_transform(X)
+    # # Discretization. Buckets results to whole minutes like related works.
+    # # y = y.apply(lambda x: int(x/60))
+
+    # Track the feature types of each cell.
+    numeric_features = []
+    categorical_features = []
+    # Iterate over every cell.
+    for col in X:
+        try:
+            # Attempt to convert column to float; if successful, it's numeric.
+            X[col] = pd.to_numeric(X[col], errors='raise')
+            X[col] = X[col].astype(float)
+            X[col].fillna(-1.0, inplace=True)
+            numeric_features.append(str(col))
+        except ValueError:
+            # Conversion failed, so treat as categorical and convert to string.
+            X[col] = X[col].astype(str)
+            categorical_features.append(str(col))
+
+    # Standardization for numeric data.
+    numeric_transformer = Pipeline(
+        steps=[("imputer", SimpleImputer(strategy="median")),
+               ("scaler", StandardScaler())])
+    # One-hot encoding for categorical data.
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore")
+    # Add the transformers to a preprocessor object.
+    preprocessor = ColumnTransformer(transformers=[
+        ("num", numeric_transformer, numeric_features),
+        ("cat", categorical_transformer, categorical_features),],
+        sparse_threshold=0.0)
+
+    return preprocessor
+
 def get_pipeline(preprocessor, clf):
     """ 
     Convenience function to add a preprocessor to a regression pipeline.

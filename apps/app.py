@@ -17,6 +17,8 @@ TEST_DIR = "./tests/"
 DEBUG_APPS = False
 SYSTEM = platform.node()
 
+TEMP_IS_BASELINE = False
+
 # ExaMiniMDbase
 
 app_params = json.load(open('./apps/params.json'))
@@ -199,7 +201,7 @@ class App:
         """
         self.df = pd.read_csv(self.test_file_path,
                               sep=",", header=0, index_col=0,
-                              engine="c", quotechar="\"")
+                              engine="c", quotechar="\"",low_memory=False)
         y = self.df[self.pred_col]
         X = self.df
 
@@ -658,5 +660,36 @@ class HACC_IO(App):
     #     return fill_empty_params(params,self.range_params) 
 
 
+class EMPIRE(App):
+    def __init__(self,pred_col,test_file_path: str):
+        super().__init__("EMPIRE",pred_col,test_file_path)
 
+    def parse(self):
+        X,y = super().parse()
+        PREDICTION = self.pred_col
+
+        if PREDICTION == "timeTaken":
+            y = X["timeTaken"].astype(float)
+            y = y.fillna(86400.0*2)
+        
+
+        if "timeTaken" in X.columns:
+            X = X.drop(columns="timeTaken")
+        if "exit status" in X.columns:
+            X = X.drop(columns="exit status")
+        if "cpuhours" in X.columns:
+            X = X.drop(columns="cpuhours")
+        if "gpuhours" in X.columns:
+            # Synthesized attribute based on gpu usage.
+            X['use_gpu'] = X['gpuhours'].apply(lambda x: float(x) > 0)
+            X = X.drop(columns="gpuhours") 
+
+        X = X.drop(columns="error")
+
+        if TEMP_IS_BASELINE:
+            for col in X:
+                if "env_SLURM" not in col:
+                    X = X.drop(columns=col)
+        
+        return X,y
 

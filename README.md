@@ -11,6 +11,9 @@ Generating, testing, and parsing inputs for a  variety of Proxy Apps, both local
 ./init.sh
 ```
 
+## Docs
+Further docs are located in the /docs folder which contain in-depth code explanations.  
+
 ## How to use
 
 Note that scripts are set up for use on Eclipse at Sandia. Hard-coded environments, accounts, queue names, etc. will need to be adjusted to suit your specific HPC system.

@@ -94,7 +94,7 @@ if __name__ == "__main__":
     # test
     x = apps[0]
     # print(x.generate_test(x.get_params(),1))
-    print(x.get_params())
+    # print(x.get_params())
 
     for app in apps:
         print("running app: ",app.name)

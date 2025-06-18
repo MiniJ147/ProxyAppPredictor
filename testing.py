@@ -115,6 +115,7 @@ terminate = False
 should_depickle = False
 
 # LAMMPS SNAP file contents for ExaMiniMD SNAP testing.
+#[TODO]: Add these to seperate files and figure out there use case
 SNAP_FILE = ('# DATE: 2014-09-05 CONTRIBUTOR: Aidan Thompson athomps@sandia.gov CITATION: Thompson, Swiler, Trott, Foiles and Tucker, arxiv.org, 1409.3880 (2014)\n'
              '\n'
              '# Definition of SNAP potential Ta_Cand06A\n'
@@ -184,6 +185,7 @@ SNAPPARAM_FILE = ('# DATE: 2014-09-05 CONTRIBUTOR: Aidan Thompson athomps@sandia
                   'bzeroflag 0\n'
                   'quadraticflag 0\n')
 
+#[TODO]: change this to json files
 # A set of sane defaults based on 3d Lennard-Jones melt (in.lj).
 default_params["ExaMiniMDbase"] = {"units": "lj",
                                    "lattice": "fcc",
@@ -722,6 +724,7 @@ def get_next_index(app):
     return idx
 
 
+#[NOTE]: could remove?
 def make_slurm_script(f):
     """ Fill in the base contents of the SLURM script.
     Use format_map() to substitute parameters.
@@ -2109,7 +2112,8 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
                 plt.tick_params(axis='x',rotation=25,which="major",labelsize=8)
                 plt.tight_layout()
 
-                plt.savefig(f"figures/{str(model_name).replace(" ","_")}/{quart}th_distrubtion.svg")
+                fig_name = str(model_name).replace(" ","_")
+                plt.savefig(f"figures/{fig_name}/{quart}th_distrubtion.svg")
                 plt.close()
 
             
@@ -2134,7 +2138,9 @@ def regression(regressor, model_name, X, y, one_at_a_time=False):
             
             
             plt.legend()
-            plt.savefig(f"figures/{str(model_name).replace(" ","_")}/generic_plots.svg")
+
+            fig_name = str(model_name).replace(" ","_")
+            plt.savefig(f"figures/{fig_name}/generic_plots.svg")
 
             print("TEMP CODE PLEASE REMOVE AFTER")
             return ret
@@ -2226,6 +2232,8 @@ def run_regressor(X, y, preprocessor, model_idx, app="", only_count=False):
     regressors = []
 
     # Run our regressors.
+
+    # def regression(regressor, model_name, X, y, one_at_a_time=False):
     regressors.append(
         (regression, get_pipeline(preprocessor, RandomForestRegressor()),
          "Random Forest Regressor "+app, X, y))
@@ -2633,3 +2641,21 @@ if __name__ == "__main__":
     original_sigint = signal.getsignal(signal.SIGINT)
     # Run main.
     main()
+
+    # [NOTE]: Test code to verify json was made properly
+    # print("test")
+    # import json
+    # apps_data = json.load(open("./apps/params.json","r"))
+    # print(apps_data["nekbone"]["default"])
+    # print(default_params["nekbone"])
+    # vapps = ["nekbone","ExaMiniMDbase","ExaMiniMDsnap","LAMMPS","SWFFT","sw4lite","miniAMR","HACC-IO"]
+    # for vapp in vapps:
+    #     r1 = apps_data[vapp]["default"] == default_params[vapp]
+    #     r2 = apps_data[vapp]["range"] == range_params[vapp]
+    #     if not r1 and r2:
+    #         print(vapp,r1,r2)
+    #     else:
+    #         print(vapp,"passed")
+    # print(apps_data["nekbone"]["default"] == default_params["nekbone"])
+
+

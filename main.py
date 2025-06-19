@@ -104,6 +104,20 @@ def get_pipeline(preprocessor, clf):
     return Pipeline(steps=[("preprocessor", preprocessor), ("classifier", clf)])
 
 
+def example_run_of_EMPIRE():
+    assert True==False, "NOT IMPLEMENTED FILE"
+
+    emp = app.EMPIRE("timeTaken","datapath.csv")
+    X,y = emp.parse()
+    preprocessor = generate_empire_preprocessor(X)
+    
+
+    driver.Base().run(
+        get_pipeline(preprocessor,RandomForestRegressor()),
+                      "random forest regressor on empire",
+                      X,y)
+
+
 
 if __name__ == "__main__":
     print("hello world!")
